@@ -1,0 +1,7 @@
+{
+  "name": "Nexora Limited - Shareholder & Investment Portal",
+  "description": "Shariah-compliant business and property investment management portal for Nexora Limited with shareholder tracking, monthly installment processing, approval workflows, and financial reporting in Bengali and English.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
