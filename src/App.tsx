@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Language, Role, Member, Installment, Project } from './types';
-import { FOUNDER_MEMBERS, INITIAL_INSTALLMENTS, PROJECTS, COMPANY_INFO } from './data/initialData';
+import { Language, Role, Member, Installment, Project, Notice } from './types';
+import { FOUNDER_MEMBERS, INITIAL_INSTALLMENTS, PROJECTS, NOTICES, COMPANY_INFO } from './data/initialData';
 import { translations } from './data/translations';
 
 // Components
@@ -10,6 +10,7 @@ import { AboutView } from './components/AboutView';
 import { GovernanceView } from './components/GovernanceView';
 import { ProjectsView } from './components/ProjectsView';
 import { MemberDashboard } from './components/MemberDashboard';
+import { MemberDepositView } from './components/MemberDepositView';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminDepositView } from './components/AdminDepositView';
 import { InstallmentsView } from './components/InstallmentsView';
@@ -87,6 +88,20 @@ export default function App() {
 
   const [projects] = useState<Project[]>(PROJECTS);
 
+  // Notices State (with persistence)
+  const [notices, setNotices] = useState<Notice[]>(() => {
+    const saved = localStorage.getItem('nxr_notices_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // fallback
+      }
+    }
+    return NOTICES;
+  });
+
   // 4. Modals State
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -123,6 +138,19 @@ export default function App() {
     localStorage.setItem('nxr_installments_v4', JSON.stringify(installments));
   }, [installments]);
 
+  useEffect(() => {
+    localStorage.setItem('nxr_notices_v1', JSON.stringify(notices));
+  }, [notices]);
+
+  // Notice Handlers
+  const handleAddNotice = (newNotice: Notice) => {
+    setNotices(prev => [newNotice, ...prev]);
+  };
+
+  const handleDeleteNotice = (id: string) => {
+    setNotices(prev => prev.filter(n => n.id !== id));
+  };
+
   // Handle Login success
   const handleLoginSuccess = (newRole: Role, user: any) => {
     setRole(newRole);
@@ -146,22 +174,35 @@ export default function App() {
 
   // Submit Installment by Member
   const handleSubmitInstallment = (data: Partial<Installment>) => {
-    const receiptSerial = `NXR-REC-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+    const activeMember = members.find(m => m.id === (data.memberId || currentUser?.id)) || currentUser;
+    const sharePercentage = activeMember?.share || 10;
+    const baseAmount = sharePercentage * 1000;
+    
+    // Check submission date
+    const submissionDate = data.date || new Date().toISOString().split('T')[0];
+    const day = parseInt(submissionDate.split('-')[2], 10) || new Date(submissionDate).getDate() || 1;
+    
+    // 1st to 10th rule: 0 BDT penalty. Strictly after 10th: 100 BDT per share.
+    const calculatedLateFee = day > 10 ? sharePercentage * 100 : 0;
+    const finalAmount = data.amount !== undefined ? data.amount : (baseAmount + calculatedLateFee);
+    const receiptSerial = data.receiptNo || `NXR-REC-${data.year || new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+
     const newInst: Installment = {
       id: `TRX-${Date.now().toString().slice(-6)}`,
       receiptNo: receiptSerial,
-      memberId: data.memberId || 'NXR-001',
-      memberName: data.memberName || 'Member',
-      memberNameBn: data.memberNameBn || data.memberName || 'Member',
+      memberId: activeMember?.id || data.memberId || 'NXR-001',
+      memberName: activeMember?.name || data.memberName || 'Member',
+      memberNameBn: activeMember?.nameBn || data.memberNameBn || data.memberName || 'সদস্য',
       month: data.month || 'September',
       year: data.year || 2026,
-      amount: data.amount || 10000,
-      lateFee: 0,
+      amount: finalAmount,
+      lateFee: data.lateFee !== undefined ? data.lateFee : calculatedLateFee,
       method: data.method || 'bKash Merchant',
       trxId: data.trxId || `TXN-${Math.floor(Math.random() * 89999 + 10000)}`,
-      date: data.date || new Date().toISOString().split('T')[0],
+      date: submissionDate,
       status: 'pending',
-      notes: data.notes
+      notes: data.notes || '',
+      isDeleted: false
     };
 
     setInstallments(prev => [newInst, ...prev]);
@@ -337,6 +378,7 @@ export default function App() {
           onOpenNotice={() => setShowNoticeModal(true)}
           onOpenChangePassword={() => setShowChangePasswordModal(true)}
           pendingCount={pendingCount}
+          noticeCount={notices.length}
         />
 
         {/* MAIN BODY VIEW CONTAINER */}
@@ -389,9 +431,20 @@ export default function App() {
               member={currentUser}
               installments={installments}
               lang={lang}
-              onSubmitInstallment={handleSubmitInstallment}
+              onNavigateToDeposit={() => setActiveTab('member-deposit')}
               onViewReceipt={(inst) => setSelectedReceipt(inst)}
               onViewCertificate={(mem) => setSelectedCertificateMember(mem)}
+            />
+          )}
+
+          {/* Member Dedicated Submit Installment Portal */}
+          {activeTab === 'member-deposit' && role === 'member' && currentUser && (
+            <MemberDepositView
+              member={currentUser}
+              lang={lang}
+              onSubmitInstallment={handleSubmitInstallment}
+              onViewReceipt={(inst) => setSelectedReceipt(inst)}
+              onNavigateToDashboard={() => setActiveTab('member-dashboard')}
             />
           )}
 
@@ -533,6 +586,7 @@ export default function App() {
       <LoginModal
         isOpen={showLoginModal}
         lang={lang}
+        members={members}
         onClose={() => setShowLoginModal(false)}
         onSuccess={handleLoginSuccess}
       />
@@ -540,7 +594,11 @@ export default function App() {
       <NoticeBoardModal
         isOpen={showNoticeModal}
         lang={lang}
+        role={role}
+        notices={notices}
         onClose={() => setShowNoticeModal(false)}
+        onAddNotice={handleAddNotice}
+        onDeleteNotice={handleDeleteNotice}
       />
 
       <ChangePasswordModal

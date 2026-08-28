@@ -6,16 +6,19 @@ import { X, Lock, User, ShieldCheck, KeyRound, Sparkles, ChevronRight } from 'lu
 interface Props {
   isOpen: boolean;
   lang: Language;
+  members?: Member[];
   onClose: () => void;
   onSuccess: (role: Role, user: any) => void;
 }
 
-export const LoginModal: React.FC<Props> = ({ isOpen, lang, onClose, onSuccess }) => {
+export const LoginModal: React.FC<Props> = ({ isOpen, lang, members, onClose, onSuccess }) => {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
+
+  const currentMembersList = members && members.length > 0 ? members : FOUNDER_MEMBERS;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +43,7 @@ export const LoginModal: React.FC<Props> = ({ isOpen, lang, onClose, onSuccess }
     }
 
     // Check Member Login
-    const found = FOUNDER_MEMBERS.find(m => m.id.toLowerCase() === cleanId.toLowerCase());
+    const found = currentMembersList.find(m => m.id.toLowerCase() === cleanId.toLowerCase());
     if (found) {
       const isValidMember = expectedCustomPass 
         ? password === expectedCustomPass 

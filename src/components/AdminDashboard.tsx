@@ -251,7 +251,12 @@ export const AdminDashboard: React.FC<Props> = ({
                       {inst.month} {inst.year}
                     </td>
                     <td className="py-3.5 px-4 font-bold text-emerald-400 font-mono">
-                      ৳ {inst.amount.toLocaleString()}
+                      <div>৳ {inst.amount.toLocaleString()}</div>
+                      {inst.lateFee > 0 && (
+                        <div className="text-[10px] text-amber-400 font-normal">
+                          (Late Fee: ৳{inst.lateFee})
+                        </div>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-slate-300">
                       <div>{inst.method}</div>

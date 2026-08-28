@@ -6,7 +6,7 @@ import {
   Building2, Wallet, CheckCircle2, Clock, 
   Send, CreditCard, ShieldCheck, Timer, 
   Calendar, FileText, PlusCircle, AlertCircle, ArrowRight,
-  Lock, Trash2, RotateCcw, ShieldAlert
+  Lock, Trash2, RotateCcw, ShieldAlert, X
 } from 'lucide-react';
 
 interface Props {
@@ -515,8 +515,16 @@ export const AdminDepositView: React.FC<Props> = ({
       {/* DELETE CONFIRMATION MODAL */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 text-rose-400">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+            <button
+              onClick={() => setDeleteConfirmId(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              title="Close"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2 text-rose-400 pr-6">
               <ShieldAlert className="w-5 h-5" />
               <span>{lang === 'bn' ? 'কিস্তি ট্র্যাশে স্থানান্তর নিশ্চিতকরণ' : 'Move Installment to Trash'}</span>
             </h3>
@@ -569,9 +577,11 @@ export const AdminDepositView: React.FC<Props> = ({
               </div>
               <button
                 onClick={() => setShowTrashModal(false)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white text-xs"
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700"
+                title="Close"
+                aria-label="Close Trash modal"
               >
-                {t.close}
+                <X className="w-4 h-4" />
               </button>
             </div>
 

@@ -842,8 +842,16 @@ export const GovernanceView: React.FC<Props> = ({
       {/* MOVE MEMBER TO TRASH MODAL */}
       {memberToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 text-rose-400">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+            <button
+              onClick={() => setMemberToDelete(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              title="Close"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2 text-rose-400 pr-6">
               <ShieldAlert className="w-5 h-5" />
               <span>{lang === 'bn' ? 'সদস্য প্রোফাইল ট্র্যাশে পাঠান' : 'Move Shareholder to Trash'}</span>
             </h3>
@@ -879,8 +887,16 @@ export const GovernanceView: React.FC<Props> = ({
       {/* PERMANENT PURGE MEMBER MODAL */}
       {memberToPurge && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 text-rose-500">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+            <button
+              onClick={() => setMemberToPurge(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              title="Close"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2 text-rose-500 pr-6">
               <AlertTriangle className="w-5 h-5" />
               <span>{lang === 'bn' ? 'স্থায়ীভাবে মুছে ফেলার সতর্কতা' : 'Permanent Purge Member'}</span>
             </h3>
