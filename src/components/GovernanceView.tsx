@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Member, Language, Role } from '../types';
 import { 
-  Search, UserCheck, Shield, Phone, Mail, Award, CheckCircle2, 
+  Search, UserCheck, Shield, Phone, Mail, CheckCircle2, 
   ChevronRight, Globe, MapPin, Building, Edit3, Trash2, 
-  UserPlus, RotateCcw, ShieldAlert, AlertTriangle, Check, X
+  UserPlus, RotateCcw, ShieldAlert, AlertTriangle, Check, X,
+  Users
 } from 'lucide-react';
 
 interface Props {
   members: Member[];
   lang: Language;
   role?: Role;
-  onViewCertificate?: (member: Member) => void;
   onUpdateMember?: (updatedMember: Member) => void;
   onDeleteMember?: (memberId: string) => void;
   onRestoreMember?: (memberId: string) => void;
@@ -23,7 +23,6 @@ export const GovernanceView: React.FC<Props> = ({
   members, 
   lang, 
   role,
-  onViewCertificate,
   onUpdateMember,
   onDeleteMember,
   onRestoreMember,
@@ -41,6 +40,13 @@ export const GovernanceView: React.FC<Props> = ({
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [memberToPurge, setMemberToPurge] = useState<Member | null>(null);
 
+  // Helper for strictly sequential sorting by Member ID: NXR-001 -> NXR-002 -> ... -> NXR-013
+  const sortMembersById = (a: Member, b: Member) => {
+    const numA = parseInt(a.id.replace(/\D/g, ''), 10) || 0;
+    const numB = parseInt(b.id.replace(/\D/g, ''), 10) || 0;
+    return numA - numB;
+  };
+
   // New Member Form State
   const [newMemberForm, setNewMemberForm] = useState<Partial<Member>>({
     id: `NXR-${String(members.length + 1).padStart(3, '0')}`,
@@ -56,8 +62,8 @@ export const GovernanceView: React.FC<Props> = ({
     email: 'member@nexora.com.bd'
   });
 
-  const activeMembers = members.filter(m => !m.isDeleted);
-  const trashedMembers = members.filter(m => m.isDeleted);
+  const activeMembers = [...members.filter(m => !m.isDeleted)].sort(sortMembersById);
+  const trashedMembers = [...members.filter(m => m.isDeleted)].sort(sortMembersById);
 
   const displayList = viewTrashed ? trashedMembers : activeMembers;
 
@@ -74,16 +80,16 @@ export const GovernanceView: React.FC<Props> = ({
     if (!matchesSearch) return false;
 
     if (filterGroup === 'management') {
-      return m.committeeGroup === 'management' || ['NXR-004', 'NXR-007', 'NXR-006', 'NXR-012', 'NXR-008', 'NXR-011', 'NXR-010', 'NXR-013'].includes(m.id);
+      return m.committeeGroup === 'management' || ['NXR-004', 'NXR-006', 'NXR-007', 'NXR-008', 'NXR-010', 'NXR-011', 'NXR-012', 'NXR-013'].includes(m.id);
     }
     if (filterGroup === 'advisor') {
-      return m.committeeGroup === 'advisor' || ['NXR-003', 'NXR-001', 'NXR-002', 'NXR-005', 'NXR-009'].includes(m.id);
+      return m.committeeGroup === 'advisor' || ['NXR-001', 'NXR-002', 'NXR-003', 'NXR-005', 'NXR-009'].includes(m.id);
     }
     return true;
-  });
+  }).sort(sortMembersById);
 
-  const managementList = filteredMembers.filter(m => (m.committeeGroup === 'management' || ['NXR-004', 'NXR-007', 'NXR-006', 'NXR-012', 'NXR-008', 'NXR-011', 'NXR-010', 'NXR-013'].includes(m.id)));
-  const advisorList = filteredMembers.filter(m => (m.committeeGroup === 'advisor' || ['NXR-003', 'NXR-001', 'NXR-002', 'NXR-005', 'NXR-009'].includes(m.id)));
+  const managementList = filteredMembers.filter(m => (m.committeeGroup === 'management' || ['NXR-004', 'NXR-006', 'NXR-007', 'NXR-008', 'NXR-010', 'NXR-011', 'NXR-012', 'NXR-013'].includes(m.id))).sort(sortMembersById);
+  const advisorList = filteredMembers.filter(m => (m.committeeGroup === 'advisor' || ['NXR-001', 'NXR-002', 'NXR-003', 'NXR-005', 'NXR-009'].includes(m.id))).sort(sortMembersById);
 
   const totalActiveShares = activeMembers.reduce((acc, curr) => acc + curr.share, 0);
 
@@ -132,6 +138,111 @@ export const GovernanceView: React.FC<Props> = ({
     });
   };
 
+  // Reusable Member Card Component
+  const renderMemberCard = (member: Member) => (
+    <div
+      key={member.id}
+      className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition flex flex-col justify-between space-y-3 shadow-lg group relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0">
+        <div className="text-[11px] font-black px-2.5 py-0.5 rounded-bl-xl font-mono bg-slate-800 text-emerald-400 border-l border-b border-slate-700">
+          {member.share}% SHARE
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        <div className="flex items-start space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-emerald-400 text-xs font-mono group-hover:border-emerald-500/50 transition shrink-0">
+            {member.id}
+          </div>
+          <div className="pr-12">
+            <h3 className="text-sm font-bold text-white group-hover:text-emerald-400 transition leading-snug">
+              {lang === 'bn' ? member.nameBn : member.name}
+            </h3>
+            <p className="text-xs text-emerald-400 font-medium mt-0.5">
+              {lang === 'bn' ? member.designationBn : member.designationEn}
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-2.5 border-t border-slate-800/80 space-y-1.5 text-xs text-slate-400">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1 text-[11px] text-slate-400">
+              <MapPin className="w-3 h-3 text-emerald-400" />
+              <span>{lang === 'bn' ? (member.locationBn || 'বাংলাদেশ') : (member.locationEn || 'Bangladesh')}</span>
+            </span>
+            <span className="font-mono font-semibold text-white">৳{(member.share * 1000).toLocaleString()}/mo</span>
+          </div>
+
+          <div className="flex items-center space-x-2 text-[11px] text-slate-500 pt-0.5">
+            <Phone className="w-3 h-3 text-slate-400" />
+            <span className="font-mono">{member.phone}</span>
+          </div>
+
+          <div className="pt-1">
+            <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              member.committeeGroup === 'management' || ['NXR-004', 'NXR-006', 'NXR-007', 'NXR-008', 'NXR-010', 'NXR-011', 'NXR-012', 'NXR-013'].includes(member.id)
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+            }`}>
+              {member.committeeGroup === 'management' || ['NXR-004', 'NXR-006', 'NXR-007', 'NXR-008', 'NXR-010', 'NXR-011', 'NXR-012', 'NXR-013'].includes(member.id)
+                ? (lang === 'bn' ? 'ব্যবস্থাপনা কমিটি (সিলেট)' : 'Management (Domestic)')
+                : (lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাস)' : 'Advisory (Overseas)')}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-1.5 pt-2">
+        {role === 'admin' && !viewTrashed && (
+          <div className="flex items-center gap-1.5">
+            {onUpdateMember && (
+              <button
+                onClick={() => setEditingMember(member)}
+                className="flex-1 py-1.5 px-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center justify-center gap-1"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>{lang === 'bn' ? 'সম্পাদনা' : 'Edit'}</span>
+              </button>
+            )}
+            {onDeleteMember && (
+              <button
+                onClick={() => setMemberToDelete(member)}
+                className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs transition"
+                title="Move to Trash"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {role === 'admin' && viewTrashed && (
+          <div className="flex items-center gap-1.5">
+            {onRestoreMember && (
+              <button
+                onClick={() => onRestoreMember(member.id)}
+                className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition flex items-center justify-center gap-1"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>{lang === 'bn' ? 'পুনরুদ্ধার' : 'Restore'}</span>
+              </button>
+            )}
+            {onPermanentDeleteMember && (
+              <button
+                onClick={() => setMemberToPurge(member)}
+                className="p-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold transition"
+                title="Permanent Purge"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-300">
       
@@ -147,8 +258,8 @@ export const GovernanceView: React.FC<Props> = ({
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
             {lang === 'bn' 
-              ? 'নেক্সোরা লিমিটেডের ব্যবস্থাপনা কমিটি (সিলেট, বাংলাদেশ) ও উপদেষ্টা পরিষদ (প্রবাস)' 
-              : 'Management Committee (Sylhet, BD) and Advisory Council (Overseas) of Nexora Limited'}
+              ? 'নেক্সোরা লিমিটেডের ব্যবস্থাপনা কমিটি (সিলেট, বাংলাদেশ) ও উপদেষ্টা পরিষদ (প্রবাস) — ক্রমিক NXR-001 থেকে NXR-013' 
+              : 'Management Committee (Sylhet, BD) and Advisory Council (Overseas) — Sequential NXR-001 to NXR-013'}
           </p>
         </div>
 
@@ -237,7 +348,7 @@ export const GovernanceView: React.FC<Props> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={lang === 'bn' ? 'নাম, আইডি, পদবী বা অবস্থান দিয়ে খুঁজুন...' : 'Search by name, ID, designation, or location...'}
+            placeholder={lang === 'bn' ? 'নাম, আইডি, পদবী বা অবস্থান দিয়ে খুঁজুন (যেমন: NXR-001)...' : 'Search by name, ID, designation, or location (e.g. NXR-001)...'}
             className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
           />
         </div>
@@ -247,17 +358,17 @@ export const GovernanceView: React.FC<Props> = ({
             onClick={() => setFilterGroup('all')}
             className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
               filterGroup === 'all'
-                ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-bold'
                 : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
             }`}
           >
-            {lang === 'bn' ? `সকল (${displayList.length})` : `All (${displayList.length})`}
+            {lang === 'bn' ? `সকল (NXR-001 হতে NXR-013) [${displayList.length}]` : `All (NXR-001 to NXR-013) [${displayList.length}]`}
           </button>
           <button
             onClick={() => setFilterGroup('management')}
             className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
               filterGroup === 'management'
-                ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-bold'
                 : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
             }`}
           >
@@ -267,7 +378,7 @@ export const GovernanceView: React.FC<Props> = ({
             onClick={() => setFilterGroup('advisor')}
             className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
               filterGroup === 'advisor'
-                ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-bold'
                 : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
             }`}
           >
@@ -292,8 +403,42 @@ export const GovernanceView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* SECTION 1: MANAGEMENT COMMITTEE (দেশ - সিলেট, বাংলাদেশ) */}
-      {(filterGroup === 'all' || filterGroup === 'management') && managementList.length > 0 && (
+      {/* VIEW: ALL MEMBERS (SEQUENTIALLY SORTED NXR-001 TO NXR-013) */}
+      {filterGroup === 'all' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">
+                  {lang === 'bn' ? 'সকল প্রতিষ্ঠাতা সদস্য ও অংশীদার তালিকা (NXR-001 থেকে NXR-013 ক্রমিক)' : 'All Founder Shareholders & Members (Sequential NXR-001 to NXR-013)'}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {lang === 'bn' ? 'সদস্য আইডি অনুযায়ী ক্রমানুসারে সাজানো সম্পূর্ণ ডিরেক্টরি' : 'Strictly sorted ascending by member identification code'}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              {filteredMembers.length} Members
+            </span>
+          </div>
+
+          {filteredMembers.length === 0 ? (
+            <div className="p-10 text-center bg-slate-900 rounded-2xl border border-slate-800 text-slate-400">
+              <p>{lang === 'bn' ? 'কোনো সদস্য পাওয়া যায়নি।' : 'No members found matching your search.'}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {filteredMembers.map((member) => renderMemberCard(member))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW: MANAGEMENT COMMITTEE (দেশ - সিলেট, বাংলাদেশ) */}
+      {filterGroup === 'management' && managementList.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center space-x-2.5">
@@ -305,7 +450,7 @@ export const GovernanceView: React.FC<Props> = ({
                   {lang === 'bn' ? 'ব্যবস্থাপনা কমিটি (দেশ - সিলেট, বাংলাদেশ)' : 'Management Committee (Domestic - Sylhet, Bangladesh)'}
                 </h2>
                 <p className="text-xs text-slate-400">
-                  {lang === 'bn' ? '৮ জন সদস্য — নির্বাহী পরিচালনা ও ব্যবসায়িক কার্যক্রম' : '8 Members — Executive Operations & Business Leadership'}
+                  {lang === 'bn' ? 'নির্বাহী পরিচালনা ও ব্যবসায়িক কার্যক্রম' : 'Executive Operations & Business Leadership'}
                 </p>
               </div>
             </div>
@@ -315,114 +460,14 @@ export const GovernanceView: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {managementList.map((member) => (
-              <div
-                key={member.id}
-                className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition flex flex-col justify-between space-y-3 shadow-lg group relative overflow-hidden"
-              >
-                <div className="absolute top-0 right-0">
-                  <div className="text-[11px] font-black px-2.5 py-0.5 rounded-bl-xl font-mono bg-slate-800 text-emerald-400 border-l border-b border-slate-700">
-                    {member.share}% SHARE
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-emerald-400 text-xs font-mono group-hover:border-emerald-500/50 transition shrink-0">
-                      {member.id}
-                    </div>
-                    <div className="pr-12">
-                      <h3 className="text-sm font-bold text-white group-hover:text-emerald-400 transition leading-snug">
-                        {lang === 'bn' ? member.nameBn : member.name}
-                      </h3>
-                      <p className="text-xs text-emerald-400 font-medium mt-0.5">
-                        {lang === 'bn' ? member.designationBn : member.designationEn}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2.5 border-t border-slate-800/80 space-y-1.5 text-xs text-slate-400">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                        <MapPin className="w-3 h-3 text-emerald-400" />
-                        <span>{lang === 'bn' ? (member.locationBn || 'সিলেট, বাংলাদেশ') : (member.locationEn || 'Sylhet, Bangladesh')}</span>
-                      </span>
-                      <span className="font-mono font-semibold text-white">৳{(member.share * 1000).toLocaleString()}/mo</span>
-                    </div>
-
-                    <div className="flex items-center space-x-2 text-[11px] text-slate-500 pt-0.5">
-                      <Phone className="w-3 h-3 text-slate-400" />
-                      <span className="font-mono">{member.phone}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 pt-2">
-                  {onViewCertificate && !viewTrashed && (
-                    <button
-                      onClick={() => onViewCertificate(member)}
-                      className="w-full py-1.5 px-3 rounded-xl bg-slate-800/90 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 text-xs font-semibold transition border border-slate-700/60 flex items-center justify-center space-x-1.5"
-                    >
-                      <Award className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{lang === 'bn' ? 'শেয়ার সনদপত্র দেখুন' : 'View Certificate'}</span>
-                    </button>
-                  )}
-
-                  {role === 'admin' && !viewTrashed && (
-                    <div className="flex items-center gap-1.5">
-                      {onUpdateMember && (
-                        <button
-                          onClick={() => setEditingMember(member)}
-                          className="flex-1 py-1.5 px-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center justify-center gap-1"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                          <span>{lang === 'bn' ? 'সম্পাদনা' : 'Edit'}</span>
-                        </button>
-                      )}
-                      {onDeleteMember && (
-                        <button
-                          onClick={() => setMemberToDelete(member)}
-                          className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs transition"
-                          title="Move to Trash"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {role === 'admin' && viewTrashed && (
-                    <div className="flex items-center gap-1.5">
-                      {onRestoreMember && (
-                        <button
-                          onClick={() => onRestoreMember(member.id)}
-                          className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition flex items-center justify-center gap-1"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>{lang === 'bn' ? 'পুনরুদ্ধার' : 'Restore'}</span>
-                        </button>
-                      )}
-                      {onPermanentDeleteMember && (
-                        <button
-                          onClick={() => setMemberToPurge(member)}
-                          className="p-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold transition"
-                          title="Permanent Purge"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+            {managementList.map((member) => renderMemberCard(member))}
           </div>
         </div>
       )}
 
-      {/* SECTION 2: ADVISORY COUNCIL (প্রবাসী ও বিশেষজ্ঞ পরিষদ) */}
-      {(filterGroup === 'all' || filterGroup === 'advisor') && advisorList.length > 0 && (
-        <div className="space-y-4 pt-4">
+      {/* VIEW: ADVISORY COUNCIL (প্রবাসী ও বিশেষজ্ঞ পরিষদ) */}
+      {filterGroup === 'advisor' && advisorList.length > 0 && (
+        <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center space-x-2.5">
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -433,7 +478,7 @@ export const GovernanceView: React.FC<Props> = ({
                   {lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাসী ও কৌশলগত অংশীদার)' : 'Advisory Council (Overseas & Strategic Partners)'}
                 </h2>
                 <p className="text-xs text-slate-400">
-                  {lang === 'bn' ? '৫ জন সদস্য — আন্তর্জাতিক পরামর্শ ও কৌশলগত দিকনির্দেশনা' : '5 Members — Global Strategy & Advisory Governance'}
+                  {lang === 'bn' ? 'আন্তর্জাতিক পরামর্শ ও কৌশলগত দিকনির্দেশনা' : 'Global Strategy & Advisory Governance'}
                 </p>
               </div>
             </div>
@@ -443,107 +488,7 @@ export const GovernanceView: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {advisorList.map((member) => (
-              <div
-                key={member.id}
-                className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition flex flex-col justify-between space-y-3 shadow-lg group relative overflow-hidden"
-              >
-                <div className="absolute top-0 right-0">
-                  <div className="text-[11px] font-black px-2.5 py-0.5 rounded-bl-xl font-mono bg-slate-800 text-emerald-400 border-l border-b border-slate-700">
-                    {member.share}% SHARE
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-emerald-400 text-xs font-mono group-hover:border-emerald-500/50 transition shrink-0">
-                      {member.id}
-                    </div>
-                    <div className="pr-12">
-                      <h3 className="text-sm font-bold text-white group-hover:text-emerald-400 transition leading-snug">
-                        {lang === 'bn' ? member.nameBn : member.name}
-                      </h3>
-                      <p className="text-xs text-emerald-400 font-medium mt-0.5">
-                        {lang === 'bn' ? member.designationBn : member.designationEn}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2.5 border-t border-slate-800/80 space-y-1.5 text-xs text-slate-400">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                        <MapPin className="w-3 h-3 text-emerald-400" />
-                        <span>{lang === 'bn' ? (member.locationBn || 'প্রবাসী') : (member.locationEn || 'Abroad')}</span>
-                      </span>
-                      <span className="font-mono font-semibold text-white">৳{(member.share * 1000).toLocaleString()}/mo</span>
-                    </div>
-
-                    <div className="flex items-center space-x-2 text-[11px] text-slate-500 pt-0.5">
-                      <Phone className="w-3 h-3 text-slate-400" />
-                      <span className="font-mono">{member.phone}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 pt-2">
-                  {onViewCertificate && !viewTrashed && (
-                    <button
-                      onClick={() => onViewCertificate(member)}
-                      className="w-full py-1.5 px-3 rounded-xl bg-slate-800/90 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 text-xs font-semibold transition border border-slate-700/60 flex items-center justify-center space-x-1.5"
-                    >
-                      <Award className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{lang === 'bn' ? 'শেয়ার সনদপত্র দেখুন' : 'View Certificate'}</span>
-                    </button>
-                  )}
-
-                  {role === 'admin' && !viewTrashed && (
-                    <div className="flex items-center gap-1.5">
-                      {onUpdateMember && (
-                        <button
-                          onClick={() => setEditingMember(member)}
-                          className="flex-1 py-1.5 px-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center justify-center gap-1"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                          <span>{lang === 'bn' ? 'সম্পাদনা' : 'Edit'}</span>
-                        </button>
-                      )}
-                      {onDeleteMember && (
-                        <button
-                          onClick={() => setMemberToDelete(member)}
-                          className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs transition"
-                          title="Move to Trash"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {role === 'admin' && viewTrashed && (
-                    <div className="flex items-center gap-1.5">
-                      {onRestoreMember && (
-                        <button
-                          onClick={() => onRestoreMember(member.id)}
-                          className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition flex items-center justify-center gap-1"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>{lang === 'bn' ? 'পুনরুদ্ধার' : 'Restore'}</span>
-                        </button>
-                      )}
-                      {onPermanentDeleteMember && (
-                        <button
-                          onClick={() => setMemberToPurge(member)}
-                          className="p-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold transition"
-                          title="Permanent Purge"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+            {advisorList.map((member) => renderMemberCard(member))}
           </div>
         </div>
       )}

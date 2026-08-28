@@ -205,16 +205,6 @@ export const Navbar: React.FC<Props> = ({
                 {t.about}
               </button>
               <button
-                onClick={() => setActiveTab('governance')}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
-                  activeTab === 'governance'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                {t.governance}
-              </button>
-              <button
                 onClick={() => setActiveTab('projects')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
                   activeTab === 'projects'
@@ -372,7 +362,6 @@ export const Navbar: React.FC<Props> = ({
                 <>
                   <button onClick={() => handleNavClick('home')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.home}</button>
                   <button onClick={() => handleNavClick('about')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.about}</button>
-                  <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
                 </>
               ) : role === 'member' ? (

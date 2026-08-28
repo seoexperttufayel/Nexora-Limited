@@ -24,7 +24,6 @@ import { AdminDepositView } from './components/AdminDepositView';
 import { InstallmentsView } from './components/InstallmentsView';
 import { LoginModal } from './components/LoginModal';
 import { MoneyReceiptModal } from './components/MoneyReceiptModal';
-import { ShareCertificateModal } from './components/ShareCertificateModal';
 import { NoticeBoardModal } from './components/NoticeBoardModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 
@@ -68,18 +67,27 @@ export default function App() {
     return 'home';
   });
 
+  // Helper for strictly sequential sorting by Member ID: NXR-001 -> NXR-002 -> ... -> NXR-013
+  const sortMembersById = (a: Member, b: Member) => {
+    const numA = parseInt(a.id.replace(/\D/g, ''), 10) || 0;
+    const numB = parseInt(b.id.replace(/\D/g, ''), 10) || 0;
+    return numA - numB;
+  };
+
   // 3. Members & Installments State
   const [members, setMembers] = useState<Member[]>(() => {
     const saved = localStorage.getItem('nxr_members_v4');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === 13) return parsed;
+        if (Array.isArray(parsed) && parsed.length === 13) {
+          return parsed.sort(sortMembersById);
+        }
       } catch {
         // fallback
       }
     }
-    return FOUNDER_MEMBERS;
+    return [...FOUNDER_MEMBERS].sort(sortMembersById);
   });
 
   const [installments, setInstallments] = useState<Installment[]>(() => {
@@ -141,7 +149,6 @@ export default function App() {
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Installment | null>(null);
-  const [selectedCertificateMember, setSelectedCertificateMember] = useState<Member | null>(null);
 
   // 6. LocalStorage Persistence Sync Backup
   useEffect(() => {
@@ -476,19 +483,30 @@ export default function App() {
             <AboutView lang={lang} />
           )}
 
-          {/* Governance & Founder Members */}
-          {activeTab === 'governance' && (
+          {/* Governance & Founder Members (Protected for Authenticated Members and Admins Only) */}
+          {activeTab === 'governance' && role !== 'public' && (
             <GovernanceView
               members={members}
               lang={lang}
               role={role}
-              onViewCertificate={(mem) => setSelectedCertificateMember(mem)}
               onUpdateMember={handleUpdateMember}
               onDeleteMember={handleDeleteMember}
               onRestoreMember={handleRestoreMember}
               onPermanentDeleteMember={handlePermanentDeleteMember}
               onAddMember={handleAddMember}
               onRestoreDefaultMembers={handleRestoreDefaultMembers}
+            />
+          )}
+
+          {/* Fallback if public user somehow tries to access governance directly */}
+          {activeTab === 'governance' && role === 'public' && (
+            <HomeView
+              lang={lang}
+              members={members}
+              installments={installments}
+              projects={projects}
+              onOpenLogin={() => setShowLoginModal(true)}
+              onSelectTab={setActiveTab}
             />
           )}
 
@@ -507,7 +525,6 @@ export default function App() {
               installments={installments}
               lang={lang}
               onViewReceipt={(inst) => setSelectedReceipt(inst)}
-              onViewCertificate={(mem) => setSelectedCertificateMember(mem)}
             />
           )}
 
@@ -689,14 +706,6 @@ export default function App() {
           member={members.find(m => m.id === selectedReceipt.memberId)}
           lang={lang}
           onClose={() => setSelectedReceipt(null)}
-        />
-      )}
-
-      {selectedCertificateMember && (
-        <ShareCertificateModal
-          member={selectedCertificateMember}
-          lang={lang}
-          onClose={() => setSelectedCertificateMember(null)}
         />
       )}
 

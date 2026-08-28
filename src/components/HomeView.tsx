@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Language, Member, Installment, Project } from '../types';
+import { Language, Member, Installment, Project, CompanyPost } from '../types';
 import { translations } from '../data/translations';
-import { COMPANY_INFO } from '../data/initialData';
+import { COMPANY_INFO, COMPANY_POSTS } from '../data/initialData';
 import { 
   ShieldCheck, Users, Wallet, ArrowRight, CheckCircle2, 
   TrendingUp, Building2, Calculator, ChevronRight, Lock, 
-  Sparkles, FileText, Check, Award
+  Sparkles, FileText, Check, Award, Calendar, Clock, Tag, 
+  X, ExternalLink, Newspaper, Eye, Shield, Landmark, Scale
 } from 'lucide-react';
 
 interface Props {
@@ -27,13 +28,20 @@ export const HomeView: React.FC<Props> = ({
 }) => {
   const t = translations[lang];
   const [calcShares, setCalcShares] = useState(5);
+  const [selectedPost, setSelectedPost] = useState<CompanyPost | null>(null);
+  const [postCategoryFilter, setPostCategoryFilter] = useState<string>('all');
 
+  // Total Verified / Accumulated Capital
   const totalCapitalVerified = installments
-    .filter(i => i.status === 'approved')
+    .filter(i => !i.isDeleted && i.status === 'approved')
     .reduce((sum, item) => sum + item.amount, 0);
 
-  const totalSoldShares = members.reduce((sum, m) => sum + m.share, 0);
-  const monthlySubscriptionTarget = totalSoldShares * 1000;
+  const totalSoldShares = members.filter(m => !m.isDeleted).reduce((sum, m) => sum + m.share, 0);
+
+  // Filtered Company Posts
+  const filteredPosts = postCategoryFilter === 'all'
+    ? COMPANY_POSTS
+    : COMPANY_POSTS.filter(p => p.categoryEn.toLowerCase() === postCategoryFilter.toLowerCase());
 
   return (
     <div className="space-y-16 pb-12 animate-in fade-in duration-300">
@@ -60,14 +68,14 @@ export const HomeView: React.FC<Props> = ({
 
           <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
             {t.subTagline}. {lang === 'bn' 
-              ? '১৩ জন উদ্যোক্তার ঐকমত্যে প্রতিষ্ঠিত সুদমুক্ত যৌথ মালিকানাধীন ব্যবসায়িক কাঠামো।' 
-              : 'Formed by 13 founder entrepreneurs with zero-interest, transparent profit-sharing principles.'}
+              ? '১৩ জন উদ্যোক্তা পরিচালকের ঐকমত্যে প্রতিষ্ঠিত সুদমুক্ত প্রাতিষ্ঠানিক যৌথ ব্যবসায়িক প্ল্যাটফর্ম।' 
+              : 'Institutional Shariah-compliant enterprise founded by 13 directors with zero-interest, transparent profit-sharing principles.'}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <button
               onClick={onOpenLogin}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm sm:text-base transition shadow-xl shadow-emerald-500/25 flex items-center justify-center space-x-2 group"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm sm:text-base transition shadow-xl shadow-emerald-500/25 flex items-center justify-center space-x-2 group active:scale-95"
             >
               <Lock className="w-4 h-4" />
               <span>{t.clientArea}</span>
@@ -75,91 +83,224 @@ export const HomeView: React.FC<Props> = ({
             </button>
 
             <button
-              onClick={() => onSelectTab('governance')}
-              className="w-full sm:w-auto px-7 py-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm sm:text-base transition border border-slate-700"
+              onClick={() => onSelectTab('about')}
+              className="w-full sm:w-auto px-7 py-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm sm:text-base transition border border-slate-700 active:scale-95"
             >
-              {t.governance}
+              {t.about}
             </button>
           </div>
         </div>
       </section>
 
-      {/* METRICS & VERIFIED CORPORATE PILLARS */}
+      {/* METRICS & VERIFIED CORPORATE PILLARS (FEATURING TOTAL CAPITAL) */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         
-        {/* RJSC Corporate Registration */}
-        <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group">
-          <div className="flex items-center justify-between mb-4">
+        {/* 1. TOTAL ACCUMULATED CAPITAL (মোট পুঞ্জীভূত মূলধন) */}
+        <div className="p-6 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/90 border border-emerald-500/30 hover:border-emerald-500/60 transition relative group shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+              {lang === 'bn' ? 'মোট পুঞ্জীভূত মূলধন' : 'Accumulated Capital'}
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition">
+              <Wallet className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
+            ৳ {totalCapitalVerified.toLocaleString()}
+          </p>
+          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+            <span>{lang === 'bn' ? 'অনুমোদিত মূলধন:' : 'Authorized:'}</span>
+            <span className="font-semibold text-emerald-300 font-mono">৳ ১,০০,০০,০০০</span>
+          </div>
+        </div>
+
+        {/* 2. RJSC Corporate Registration */}
+        <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group shadow-lg">
+          <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               {lang === 'bn' ? 'সরকারি নিবন্ধন' : 'RJSC Registration'}
             </span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:scale-110 transition">
               <Building2 className="w-5 h-5" />
             </div>
           </div>
           <p className="text-xl sm:text-2xl font-extrabold text-white font-mono">
             {COMPANY_INFO.regNo.split(' ')[0]}
           </p>
-          <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1 font-medium">
+          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center gap-1 text-xs text-emerald-400 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            {lang === 'bn' ? 'RJSC অনুমোদিত লিমিটেড কোম্পানি' : 'Incorporated Limited Company'}
-          </p>
+            <span>{lang === 'bn' ? 'নিবন্ধিত লিমিটেড কোম্পানি' : 'Incorporated Company'}</span>
+          </div>
         </div>
 
-        {/* Founder Shareholders */}
-        <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.soldEquity}</span>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:scale-110 transition">
+        {/* 3. Corporate Governance & Equity */}
+        <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {lang === 'bn' ? 'পরিচালনা পরিষদ' : 'Board Structure'}
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:scale-110 transition">
               <Users className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
-            {totalSoldShares}% <span className="text-xs font-sans text-slate-400 font-normal">/ 100%</span>
+          <p className="text-xl sm:text-2xl font-extrabold text-white font-mono">
+            ১৩ প্রতিষ্ঠাতা পরিচালক
           </p>
-          <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
-            {lang === 'bn' ? '১৩ জন প্রতিষ্ঠাতা উদ্যোক্তা' : '13 Founder Shareholder Board'}
-          </p>
+          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+            <span>{lang === 'bn' ? 'ব্যবস্থাপনা ও উপদেষ্টা' : 'Management & Advisory'}</span>
+            <span className="font-semibold text-purple-300 font-mono">১০০% ইকুইটি</span>
+          </div>
         </div>
 
-        {/* Shariah Compliance */}
-        <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.ribaFree}</span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition">
+        {/* 4. Shariah Compliance */}
+        <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group shadow-lg">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {lang === 'bn' ? 'শরিয়াহ মডেল' : 'Islamic Model'}
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 group-hover:scale-110 transition">
               <ShieldCheck className="w-5 h-5" />
             </div>
           </div>
           <p className="text-xl sm:text-2xl font-bold text-emerald-400">
             {lang === 'bn' ? '১০০% সুদ ও রিবা মুক্ত' : '100% Halal Model'}
           </p>
-          <p className="text-xs text-slate-400 mt-2">
-            {lang === 'bn' ? 'মুশারাকা ও মুদারাবা নীতি' : 'Musharakah & Mudarabah'}
-          </p>
-        </div>
-
-        {/* Investment Formula */}
-        <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              {lang === 'bn' ? 'কিস্তি ফ্রেমওয়ার্ক' : 'Installment Rate'}
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 group-hover:scale-110 transition">
-              <TrendingUp className="w-5 h-5" />
-            </div>
+          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center gap-1 text-xs text-slate-400">
+            <Scale className="w-3.5 h-3.5 text-amber-400" />
+            <span>{lang === 'bn' ? 'মুশারাকা ও মুদারাবা নীতি' : 'Musharakah & Mudarabah'}</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
-            ৳ ১,০০০ <span className="text-xs font-sans text-slate-400 font-normal">/ ১% শেয়ার</span>
-          </p>
-          <p className="text-xs text-amber-400 mt-2 flex items-center gap-1 font-medium">
-            <span>{lang === 'bn' ? 'মাসিক নির্ধারিত শেয়ার অনুপাত' : 'Monthly per 1% share'}</span>
-          </p>
         </div>
 
       </section>
 
-      {/* INTERACTIVE SHARE / INSTALLMENT CALCULATOR */}
+      {/* SECTION: COMPANY HIGHLIGHTS & POSTS (5 PROFESSIONAL UPDATES) */}
+      <section className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center space-x-2 text-emerald-400 mb-1">
+              <Newspaper className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-wider">
+                {lang === 'bn' ? 'কোম্পানি হাইলাইটস ও বুলেটিন' : 'Corporate Highlights & Updates'}
+              </span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+              {lang === 'bn' ? 'নেক্সোরা লিমিটেড সংবাদ ও সাম্প্রতিক অগ্রগতি' : 'Nexora Limited News & Milestone Posts'}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
+              {lang === 'bn' 
+                ? 'শরিয়াহ বোর্ড অডিট, আরজেএসসি সনদ, টেকসই এগ্রো প্রকল্প এবং ক্লাউড লেজার প্রযুক্তির সর্বশেষ আপডেটসমূহ।' 
+                : 'Latest verified updates on Shariah audits, RJSC incorporation, agro-investments, and cloud transparency.'}
+            </p>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { id: 'all', labelBn: 'সকল পোস্ট (৫)', labelEn: 'All Posts (5)' },
+              { id: 'Shariah & Ethics', labelBn: 'শরিয়াহ', labelEn: 'Shariah' },
+              { id: 'Corporate & Legal', labelBn: 'আইনি', labelEn: 'Legal' },
+              { id: 'Project Progress', labelBn: 'প্রকল্প', labelEn: 'Projects' },
+              { id: 'Tech & Transparency', labelBn: 'প্রযুক্তি', labelEn: 'Tech' },
+            ].map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setPostCategoryFilter(cat.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+                  postCategoryFilter.toLowerCase() === cat.id.toLowerCase()
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                    : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                }`}
+              >
+                {lang === 'bn' ? cat.labelBn : cat.labelEn}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 5 Posts Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredPosts.map((post, idx) => (
+            <article
+              key={post.id}
+              className={`bg-slate-900/90 rounded-2xl border border-slate-800 hover:border-emerald-500/40 transition duration-300 flex flex-col justify-between overflow-hidden group shadow-lg ${
+                idx === 0 ? 'md:col-span-2 lg:col-span-2' : ''
+              }`}
+            >
+              <div>
+                {/* Post Cover Photo */}
+                <div className={`overflow-hidden relative ${idx === 0 ? 'h-56 sm:h-64' : 'h-48'}`}>
+                  <img
+                    src={post.image}
+                    alt={post.titleEn}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                  
+                  {/* Category Chip */}
+                  <div className="absolute top-3.5 left-3.5 bg-slate-950/90 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold text-emerald-400 border border-emerald-500/30 flex items-center space-x-1.5 shadow-md">
+                    <Tag className="w-3 h-3" />
+                    <span>{lang === 'bn' ? post.categoryBn : post.categoryEn}</span>
+                  </div>
+
+                  {/* Date Chip */}
+                  <div className="absolute bottom-3 left-3.5 flex items-center space-x-2 text-xs text-slate-300 font-medium">
+                    <span className="flex items-center space-x-1 bg-slate-900/80 px-2.5 py-1 rounded-md border border-slate-700/80 backdrop-blur-sm">
+                      <Calendar className="w-3 h-3 text-emerald-400" />
+                      <span>{post.date}</span>
+                    </span>
+                    <span className="flex items-center space-x-1 bg-slate-900/80 px-2 py-1 rounded-md border border-slate-700/80 backdrop-blur-sm">
+                      <Clock className="w-3 h-3 text-amber-400" />
+                      <span>{lang === 'bn' ? post.readTimeBn : post.readTimeEn}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Post Body */}
+                <div className="p-6 space-y-3">
+                  <div className="text-[11px] font-semibold text-emerald-400 flex items-center space-x-1.5">
+                    <Award className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? post.authorBn : post.authorEn}</span>
+                  </div>
+
+                  <h3 className={`font-bold text-white group-hover:text-emerald-400 transition leading-snug ${
+                    idx === 0 ? 'text-lg sm:text-xl' : 'text-base'
+                  }`}>
+                    {lang === 'bn' ? post.titleBn : post.titleEn}
+                  </h3>
+
+                  <p className="text-xs sm:text-sm text-slate-400 line-clamp-3 leading-relaxed">
+                    {lang === 'bn' ? post.summaryBn : post.summaryEn}
+                  </p>
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    {(lang === 'bn' ? post.tagsBn : post.tagsEn).map((tag, tIdx) => (
+                      <span key={tIdx} className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700/60 font-mono">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Footer Action */}
+              <div className="p-6 pt-0 border-t border-slate-800/80 mt-2">
+                <button
+                  onClick={() => setSelectedPost(post)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-slate-200 text-xs font-bold transition flex items-center justify-center space-x-2 group/btn border border-slate-700"
+                >
+                  <Eye className="w-3.5 h-3.5 text-emerald-400 group-hover/btn:text-slate-950" />
+                  <span>{lang === 'bn' ? 'সম্পূর্ণ আর্টিকেল পড়ুন' : 'Read Full Article'}</span>
+                  <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition" />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* INTERACTIVE SHARE & CAPITAL CALCULATOR */}
       <section className="p-8 sm:p-10 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
@@ -317,56 +458,113 @@ export const HomeView: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* FOUNDER COMMITTEE & SHAREHOLDERS SHOWCASE */}
-      <section className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      {/* INSTITUTIONAL GOVERNANCE & PRIVACY-PROTECTED LEADERSHIP OVERVIEW */}
+      <section className="p-8 sm:p-12 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-8 shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
           <div>
-            <span className="text-xs text-emerald-400 font-bold uppercase tracking-wider">
-              {lang === 'bn' ? 'পরিচালনা পরিষদ ও কমিটি' : 'Governance & Leadership'}
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mt-1">
-              {lang === 'bn' ? '১৩ জন প্রতিষ্ঠাতা সদস্য ও দায়িত্বপ্রাপ্ত কমিটি' : '13 Founder Members & Executive Committee'}
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold mb-2">
+              <Shield className="w-3.5 h-3.5" />
+              <span>{lang === 'bn' ? 'প্রাতিষ্ঠানিক গভর্ন্যান্স কাঠামো' : 'Corporate Governance Structure'}</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+              {lang === 'bn' ? 'পরিচালনা পর্ষদ ও প্রাতিষ্ঠানিক পরিষদ' : 'Board of Directors & Governance Council'}
             </h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
+              {lang === 'bn'
+                ? 'নেক্সোরা লিমিটেড ১৩ জন প্রতিষ্ঠাতা অংশীদারের সমন্বয়ে গঠিত যৌথ মূলধনী প্রতিষ্ঠান।'
+                : 'Nexora Limited is structured by 13 founder directors governing executive operations and strategic growth.'}
+            </p>
           </div>
-          <button
-            onClick={() => onSelectTab('governance')}
-            className="text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1 transition"
-          >
-            <span>{lang === 'bn' ? 'সম্পূর্ণ পরিষদ ও শেয়ার সনদ' : 'Full Board & Certificates'}</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onOpenLogin}
+              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs sm:text-sm font-bold transition flex items-center space-x-2 shadow-lg shadow-emerald-500/20"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>{lang === 'bn' ? 'শেয়ারহোল্ডার লগইন' : 'Shareholder Login'}</span>
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {members.map((m) => (
-            <div
-              key={m.id}
-              className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition group flex flex-col justify-between space-y-3"
-            >
-              <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-mono font-bold text-emerald-400 text-xs group-hover:border-emerald-500 transition">
-                  {m.id}
-                </div>
-                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  {m.share}% Share
-                </span>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition">
-                  {lang === 'bn' ? m.nameBn : m.name}
-                </h4>
-                <p className="text-xs text-slate-300 mt-1 font-medium">
-                  {lang === 'bn' ? m.designationBn : m.designationEn}
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                <span>{lang === 'bn' ? 'মাসিক কিস্তি:' : 'Monthly:'}</span>
-                <span className="font-mono font-semibold text-white">৳{(m.share * 1000).toLocaleString()}</span>
-              </div>
+        {/* 3 Executive Divisions Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+              <Building2 className="w-5 h-5" />
             </div>
-          ))}
+            <div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'bn' ? 'ব্যবস্থাপনা কমিটি (দেশ)' : 'Management Committee (Domestic)'}
+              </h3>
+              <p className="text-xs text-emerald-400 font-medium mt-0.5">
+                {lang === 'bn' ? '৮ জন পরিচালক • সিলেট, বাংলাদেশ' : '8 Executive Directors • Sylhet, Bangladesh'}
+              </p>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {lang === 'bn'
+                ? 'কোম্পানির দৈনন্দিন নির্বাহী কার্যক্রম, প্রকল্প বাস্তবায়ন, অর্থ ও হিসাবরক্ষণ এবং সরাসরি ব্যবসায়িক পরিচালনা নিশ্চিত করেন।'
+                : 'Overseeing daily operational workflows, capital deployment, on-ground project execution, and local treasury management.'}
+            </p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাস)' : 'Advisory Council (Abroad)'}
+              </h3>
+              <p className="text-xs text-blue-400 font-medium mt-0.5">
+                {lang === 'bn' ? '৫ জন পরিচালক • সৌদি আরব, যুক্তরাজ্য, ইউএই' : '5 Directors • KSA, UK, UAE'}
+              </p>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {lang === 'bn'
+                ? 'আন্তর্জাতিক অভিজ্ঞতা, বৈদেশিক অংশীদারিত্ব, কৌশলগত পরিকল্পনা এবং বিনিয়োগের দিকনির্দেশনা প্রদান করেন।'
+                : 'Providing global investment insights, foreign capital alignment, diaspora networking, and long-term strategic oversight.'}
+            </p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'bn' ? 'শরিয়াহ সুপারভাইজরি কমিটি' : 'Shariah Supervisory Council'}
+              </h3>
+              <p className="text-xs text-amber-400 font-medium mt-0.5">
+                {lang === 'bn' ? 'স্বতন্ত্র ইসলামিক স্কলার প্যানেল' : 'Independent Islamic Jurisprudence Panel'}
+              </p>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {lang === 'bn'
+                ? 'সকল চুক্তি, প্রকল্প লভ্যাংশ বণ্টন এবং বিনিয়োগ প্রক্রিয়ার শতভাগ ইসলামিক কমপ্লায়েন্স ও অডিট তত্ত্বাবধান করেন।'
+                : 'Quarterly auditing all asset contracts, revenue-sharing distributions, and ensuring 100% interest-free execution.'}
+            </p>
+          </div>
+
+        </div>
+
+        {/* Shareholder Privacy Banner */}
+        <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+          <div className="flex items-center space-x-3 text-slate-300">
+            <Lock className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              {lang === 'bn'
+                ? 'আইনি নীতিমালা ও ব্যক্তিগত সুরক্ষার স্বার্থে শেয়ারহোল্ডারদের ব্যক্তিগত শেয়ার অনুপাত, ফোন নম্বর এবং শেয়ার সনদসমূহ ক্লায়েন্ট এরিয়ায় লগইন সাপেক্ষে সংরক্ষিত।'
+                : 'To protect shareholder privacy and regulatory compliance, individual share units, private contact details, and official share certificates are secured inside the authorized Client Portal.'}
+            </span>
+          </div>
+          <button
+            onClick={onOpenLogin}
+            className="text-emerald-400 hover:text-emerald-300 font-bold whitespace-nowrap underline shrink-0"
+          >
+            {lang === 'bn' ? 'লগইন করুন →' : 'Sign In Now →'}
+          </button>
         </div>
       </section>
 
@@ -374,7 +572,7 @@ export const HomeView: React.FC<Props> = ({
       <section className="p-8 sm:p-12 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-8">
         <div className="text-center max-w-2xl mx-auto space-y-2">
           <span className="text-xs text-emerald-400 font-bold uppercase tracking-wider">
-            {lang === 'bn' ? 'আমাদের ভিত্তি' : 'Core Principles'}
+            {lang === 'bn' ? 'আমাদের মূলভিত্তি' : 'Core Principles'}
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white">
             {lang === 'bn' ? 'কেন নেক্সোরা লিমিটেড সম্পূর্ণ আলাদা?' : 'Why Nexora Limited Stands Out?'}
@@ -426,6 +624,102 @@ export const HomeView: React.FC<Props> = ({
         </div>
       </section>
 
+      {/* FULL POST READER MODAL */}
+      {selectedPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative flex flex-col">
+            
+            {/* Modal Image Header */}
+            <div className="h-56 sm:h-64 relative overflow-hidden shrink-0">
+              <img
+                src={selectedPost.image}
+                alt={selectedPost.titleEn}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+              
+              <button
+                onClick={() => setSelectedPost(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="absolute bottom-4 left-6 right-6">
+                <span className="inline-block px-3 py-1 rounded-lg bg-emerald-500 text-slate-950 text-xs font-black uppercase tracking-wider mb-2">
+                  {lang === 'bn' ? selectedPost.categoryBn : selectedPost.categoryEn}
+                </span>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
+                  {lang === 'bn' ? selectedPost.titleBn : selectedPost.titleEn}
+                </h2>
+              </div>
+            </div>
+
+            {/* Modal Metadata & Content */}
+            <div className="p-6 sm:p-8 space-y-6 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 pb-4 border-b border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <Award className="w-4 h-4 text-emerald-400" />
+                  <span className="font-semibold text-slate-200">
+                    {lang === 'bn' ? selectedPost.authorBn : selectedPost.authorEn}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span className="flex items-center space-x-1">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{selectedPost.date}</span>
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center space-x-1">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{lang === 'bn' ? selectedPost.readTimeBn : selectedPost.readTimeEn}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Body Text */}
+              <div className="prose prose-invert max-w-none text-slate-300 text-sm sm:text-base leading-relaxed space-y-4">
+                <p className="font-medium text-emerald-400/90 text-base leading-relaxed">
+                  {lang === 'bn' ? selectedPost.summaryBn : selectedPost.summaryEn}
+                </p>
+                <p className="text-slate-300 leading-relaxed">
+                  {lang === 'bn' ? selectedPost.contentBn : selectedPost.contentEn}
+                </p>
+              </div>
+
+              {/* Tags & Official Corporate Seal */}
+              <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-wrap gap-1.5">
+                  {(lang === 'bn' ? selectedPost.tagsBn : selectedPost.tagsEn).map((tag, i) => (
+                    <span key={i} className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700/60 font-mono">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="text-[11px] text-slate-500 font-mono flex items-center space-x-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Verified Corporate Bulletin</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Bottom Bar */}
+            <div className="p-6 pt-0 flex justify-end">
+              <button
+                onClick={() => setSelectedPost(null)}
+                className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition border border-slate-700"
+              >
+                {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
+

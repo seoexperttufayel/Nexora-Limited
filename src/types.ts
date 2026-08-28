@@ -79,6 +79,26 @@ export interface Notice {
   important?: boolean;
 }
 
+export interface CompanyPost {
+  id: string;
+  titleEn: string;
+  titleBn: string;
+  summaryEn: string;
+  summaryBn: string;
+  contentEn: string;
+  contentBn: string;
+  categoryEn: string;
+  categoryBn: string;
+  date: string;
+  authorEn: string;
+  authorBn: string;
+  image: string;
+  readTimeEn: string;
+  readTimeBn: string;
+  tagsEn: string[];
+  tagsBn: string[];
+}
+
 export interface ExpenseRecord {
   id: string;
   category: string;

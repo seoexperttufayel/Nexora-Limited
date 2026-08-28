@@ -2,7 +2,7 @@ import React from 'react';
 import { Member, Installment, Language } from '../types';
 import { translations } from '../data/translations';
 import { 
-  Award, FileText, CheckCircle2, Clock, XCircle, 
+  FileText, CheckCircle2, Clock, XCircle, 
   ShieldCheck, TrendingUp, Sparkles, Building2
 } from 'lucide-react';
 
@@ -11,15 +11,13 @@ interface Props {
   installments: Installment[];
   lang: Language;
   onViewReceipt: (inst: Installment) => void;
-  onViewCertificate: (member: Member) => void;
 }
 
 export const MemberDashboard: React.FC<Props> = ({
   member,
   installments,
   lang,
-  onViewReceipt,
-  onViewCertificate
+  onViewReceipt
 }) => {
   const t = translations[lang];
 
@@ -64,13 +62,10 @@ export const MemberDashboard: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => onViewCertificate(member)}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs sm:text-sm font-semibold transition shadow-sm"
-          >
-            <Award className="w-4 h-4 text-amber-400" />
-            <span>{t.shareCertificate}</span>
-          </button>
+          <div className="px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs sm:text-sm text-slate-300 font-semibold flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>{lang === 'bn' ? 'যাচাইকৃত সক্রিয় প্রোফাইল' : 'Verified Active Profile'}</span>
+          </div>
         </div>
       </div>
 
