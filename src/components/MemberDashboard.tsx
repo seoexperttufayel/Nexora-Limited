@@ -3,7 +3,8 @@ import { Member, Installment, Language } from '../types';
 import { translations } from '../data/translations';
 import { 
   FileText, CheckCircle2, Clock, XCircle, 
-  ShieldCheck, TrendingUp, Sparkles, Building2
+  ShieldCheck, TrendingUp, Sparkles, Building2,
+  Wallet, Landmark
 } from 'lucide-react';
 
 interface Props {
@@ -20,6 +21,11 @@ export const MemberDashboard: React.FC<Props> = ({
   onViewReceipt
 }) => {
   const t = translations[lang];
+
+  // Company-wide total accumulated verified capital across all members
+  const totalCompanyCapital = installments
+    .filter(i => !i.isDeleted && i.status === 'approved')
+    .reduce((acc, curr) => acc + curr.amount, 0);
 
   // Filter installments for this member (exclude deleted)
   const memberInstallments = installments.filter(i => i.memberId === member.id && !i.isDeleted);
@@ -69,48 +75,80 @@ export const MemberDashboard: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* MEMBER FINANCIAL METRICS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      {/* FINANCIAL METRICS (FEATURING COMPANY TOTAL CAPITAL & MEMBER SHARES) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         
-        {/* Equity Share */}
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-            {t.shareRatio}
-          </span>
-          <p className="text-3xl font-black text-white font-mono">
+        {/* 1. Company Total Accumulated Capital (মোট পুঞ্জীভূত মূলধন) */}
+        <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900 to-slate-900/90 border border-emerald-500/30 hover:border-emerald-500/50 transition relative group shadow-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+              {lang === 'bn' ? 'মোট পুঞ্জীভূত মূলধন' : 'Total Company Capital'}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition">
+              <Wallet className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-black text-white font-mono">
+            ৳ {totalCompanyCapital.toLocaleString()}
+          </p>
+          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+            <span>{lang === 'bn' ? 'অনুমোদিত মূলধন:' : 'Authorized:'}</span>
+            <span className="font-semibold text-emerald-300 font-mono">৳ ১,০০,০০,০০০</span>
+          </div>
+        </div>
+
+        {/* 2. Equity Share */}
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition shadow-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {t.shareRatio}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-black text-white font-mono">
             {member.share}%
           </p>
-          <p className="text-xs text-slate-400 mt-2">
-            {lang === 'bn' ? `মাসিক নির্ধারিত কিস্তি ৳ ${monthlyRequired.toLocaleString()}` : `Required Monthly: ৳ ${monthlyRequired.toLocaleString()}`}
-          </p>
+          <div className="mt-2 pt-2 border-t border-slate-800/80 text-xs text-slate-400">
+            {lang === 'bn' ? `নির্ধারিত কিস্তি: ৳ ${monthlyRequired.toLocaleString()}/মাস` : `Monthly: ৳ ${monthlyRequired.toLocaleString()}`}
+          </div>
         </div>
 
-        {/* Total Contributed Approved */}
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-            {t.totalContributed}
-          </span>
-          <p className="text-3xl font-black text-emerald-400 font-mono">
+        {/* 3. Total Contributed Approved */}
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition shadow-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {t.totalContributed}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
             ৳ {approvedTotal.toLocaleString()}
           </p>
-          <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>{lang === 'bn' ? 'অনুমোদিত ও সংরক্ষিত মূলধন' : 'Audited & Confirmed Capital'}</span>
-          </p>
+          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center gap-1 text-xs text-emerald-400 font-medium">
+            <span>{lang === 'bn' ? 'অনুমোদিত জমা মূলধন' : 'Audited & Confirmed'}</span>
+          </div>
         </div>
 
-        {/* Pending Verification */}
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-            {t.pendingReq}
-          </span>
-          <p className="text-3xl font-black text-amber-400 font-mono">
+        {/* 4. Pending Verification */}
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition shadow-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {t.pendingReq}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
             ৳ {pendingTotal.toLocaleString()}
           </p>
-          <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
+          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center gap-1 text-xs text-amber-400">
             <span>{lang === 'bn' ? 'অ্যাডমিন যাচাইয়ের অপেক্ষায়' : 'Under Admin Review'}</span>
-          </p>
+          </div>
         </div>
 
       </div>

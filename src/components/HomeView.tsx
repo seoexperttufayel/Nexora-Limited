@@ -31,11 +31,6 @@ export const HomeView: React.FC<Props> = ({
   const [selectedPost, setSelectedPost] = useState<CompanyPost | null>(null);
   const [postCategoryFilter, setPostCategoryFilter] = useState<string>('all');
 
-  // Total Verified / Accumulated Capital
-  const totalCapitalVerified = installments
-    .filter(i => !i.isDeleted && i.status === 'approved')
-    .reduce((sum, item) => sum + item.amount, 0);
-
   const totalSoldShares = members.filter(m => !m.isDeleted).reduce((sum, m) => sum + m.share, 0);
 
   // Filtered Company Posts
@@ -92,29 +87,10 @@ export const HomeView: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* METRICS & VERIFIED CORPORATE PILLARS (FEATURING TOTAL CAPITAL) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* VERIFIED CORPORATE PILLARS */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         
-        {/* 1. TOTAL ACCUMULATED CAPITAL (মোট পুঞ্জীভূত মূলধন) */}
-        <div className="p-6 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/90 border border-emerald-500/30 hover:border-emerald-500/60 transition relative group shadow-lg">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-              {lang === 'bn' ? 'মোট পুঞ্জীভূত মূলধন' : 'Accumulated Capital'}
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition">
-              <Wallet className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
-            ৳ {totalCapitalVerified.toLocaleString()}
-          </p>
-          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>{lang === 'bn' ? 'অনুমোদিত মূলধন:' : 'Authorized:'}</span>
-            <span className="font-semibold text-emerald-300 font-mono">৳ ১,০০,০০,০০০</span>
-          </div>
-        </div>
-
-        {/* 2. RJSC Corporate Registration */}
+        {/* 1. RJSC Corporate Registration */}
         <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -133,7 +109,7 @@ export const HomeView: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* 3. Corporate Governance & Equity */}
+        {/* 2. Corporate Governance & Equity */}
         <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -148,11 +124,11 @@ export const HomeView: React.FC<Props> = ({
           </p>
           <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
             <span>{lang === 'bn' ? 'ব্যবস্থাপনা ও উপদেষ্টা' : 'Management & Advisory'}</span>
-            <span className="font-semibold text-purple-300 font-mono">১০০% ইকুইটি</span>
+            <span className="font-semibold text-purple-300 font-mono">১০০% যৌথ মালিকানা</span>
           </div>
         </div>
 
-        {/* 4. Shariah Compliance */}
+        {/* 3. Shariah Compliance */}
         <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition relative group shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
