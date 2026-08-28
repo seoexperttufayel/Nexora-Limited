@@ -4,7 +4,7 @@ import { translations } from '../data/translations';
 import { 
   ShieldCheck, Globe, Lock, LogOut, UserCheck, 
   Menu, X, Sparkles, Building2, Bell, FileText, CheckCircle2,
-  KeyRound, ChevronRight, User
+  KeyRound, ChevronRight, User, Cloud, CloudCheck
 } from 'lucide-react';
 
 interface Props {
@@ -20,6 +20,7 @@ interface Props {
   onOpenChangePassword: () => void;
   pendingCount: number;
   noticeCount?: number;
+  isCloudSynced?: boolean;
 }
 
 export const Navbar: React.FC<Props> = ({
@@ -34,7 +35,8 @@ export const Navbar: React.FC<Props> = ({
   onOpenNotice,
   onOpenChangePassword,
   pendingCount,
-  noticeCount = 0
+  noticeCount = 0,
+  isCloudSynced = true
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const t = translations[lang];
@@ -63,6 +65,10 @@ export const Navbar: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center space-x-3 text-[11px]">
+            <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>{lang === 'bn' ? 'ফায়ারবেস ক্লাউড সিঙ্ক: সক্রিয়' : 'Firestore Cloud Sync: Live'}</span>
+            </div>
             <span className="text-slate-400 font-mono">Reg: C-198420/2026</span>
           </div>
         </div>

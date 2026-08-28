@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Language, Role, Member, Installment, Project, Notice } from './types';
 import { FOUNDER_MEMBERS, INITIAL_INSTALLMENTS, PROJECTS, NOTICES, COMPANY_INFO } from './data/initialData';
 import { translations } from './data/translations';
+import { 
+  subscribeToInstallments, 
+  seedInitialInstallmentsIfEmpty,
+  saveInstallmentToCloud,
+  approveInstallmentInCloud,
+  rejectInstallmentInCloud,
+  updateInstallmentDeletionInCloud
+} from './services/firebase';
 
 // Components
 import { Navbar } from './components/Navbar';
@@ -102,14 +110,40 @@ export default function App() {
     return NOTICES;
   });
 
-  // 4. Modals State
+  // 4. Firestore Real-Time Cross-Device Synchronization
+  const [isCloudSynced, setIsCloudSynced] = useState(true);
+
+  useEffect(() => {
+    // Seed default installments if Firestore is empty on first run
+    seedInitialInstallmentsIfEmpty(INITIAL_INSTALLMENTS);
+
+    // Subscribe to real-time installment updates across all devices
+    const unsubscribe = subscribeToInstallments(
+      (cloudInstallments) => {
+        if (cloudInstallments && cloudInstallments.length > 0) {
+          setInstallments(cloudInstallments);
+          setIsCloudSynced(true);
+        }
+      },
+      (error) => {
+        console.warn('Firestore subscription status:', error);
+        setIsCloudSynced(false);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // 5. Modals State
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Installment | null>(null);
   const [selectedCertificateMember, setSelectedCertificateMember] = useState<Member | null>(null);
 
-  // 5. LocalStorage Persistence Sync
+  // 6. LocalStorage Persistence Sync Backup
   useEffect(() => {
     localStorage.setItem('nxr_lang', lang);
   }, [lang]);
@@ -172,8 +206,8 @@ export default function App() {
     localStorage.setItem('nxr_active_tab', 'home');
   };
 
-  // Submit Installment by Member
-  const handleSubmitInstallment = (data: Partial<Installment>) => {
+  // Submit Installment by Member (Real-time Cloud Broadcast)
+  const handleSubmitInstallment = async (data: Partial<Installment>) => {
     const activeMember = members.find(m => m.id === (data.memberId || currentUser?.id)) || currentUser;
     const sharePercentage = activeMember?.share || 10;
     const baseAmount = sharePercentage * 1000;
@@ -205,21 +239,21 @@ export default function App() {
       isDeleted: false
     };
 
-    setInstallments(prev => {
-      const updated = [newInst, ...prev];
-      try {
-        localStorage.setItem('nxr_installments_v4', JSON.stringify(updated));
-      } catch (err) {
-        console.error('Storage sync error:', err);
-      }
-      return updated;
-    });
+    // Optimistic local state update
+    setInstallments(prev => [newInst, ...prev]);
+
+    // Save to shared Firestore database for instant cross-device admin visibility
+    try {
+      await saveInstallmentToCloud(newInst);
+    } catch (err) {
+      console.error('Cloud installment save error:', err);
+    }
   };
 
-  // Admin Approve Installment
-  const handleApproveInstallment = (id: string) => {
-    setInstallments(prev => {
-      const updated = prev.map(item => {
+  // Admin Approve Installment (Real-time Cloud Broadcast)
+  const handleApproveInstallment = async (id: string) => {
+    setInstallments(prev =>
+      prev.map(item => {
         if (item.id === id) {
           return {
             ...item,
@@ -229,43 +263,44 @@ export default function App() {
           };
         }
         return item;
-      });
-      try {
-        localStorage.setItem('nxr_installments_v4', JSON.stringify(updated));
-      } catch (err) {
-        console.error('Storage sync error:', err);
-      }
-      return updated;
-    });
+      })
+    );
+
+    try {
+      await approveInstallmentInCloud(id, 'Super Admin');
+    } catch (err) {
+      console.error('Cloud approve error:', err);
+    }
   };
 
-  // Admin Reject Installment
-  const handleRejectInstallment = (id: string, reason?: string) => {
-    setInstallments(prev => {
-      const updated = prev.map(item => {
+  // Admin Reject Installment (Real-time Cloud Broadcast)
+  const handleRejectInstallment = async (id: string, reason?: string) => {
+    const finalReason = reason || 'Information mismatched or unverified.';
+    setInstallments(prev =>
+      prev.map(item => {
         if (item.id === id) {
           return {
             ...item,
             status: 'rejected' as const,
-            rejectionReason: reason || 'Information mismatched or unverified.'
+            rejectionReason: finalReason
           };
         }
         return item;
-      });
-      try {
-        localStorage.setItem('nxr_installments_v4', JSON.stringify(updated));
-      } catch (err) {
-        console.error('Storage sync error:', err);
-      }
-      return updated;
-    });
+      })
+    );
+
+    try {
+      await rejectInstallmentInCloud(id, finalReason);
+    } catch (err) {
+      console.error('Cloud reject error:', err);
+    }
   };
 
-  // Direct Admin Installment Add
-  const handleAddDirectInstallment = (data: Partial<Installment>) => {
+  // Direct Admin Installment Add (Real-time Cloud Broadcast)
+  const handleAddDirectInstallment = async (data: Partial<Installment>) => {
     const receiptSerial = `NXR-DIR-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
     const newInst: Installment = {
-      id: `TRX-${Date.now().toString().slice(-6)}`,
+      id: `TRX-${Date.now()}-${Math.floor(Math.random() * 8999 + 1000)}`,
       receiptNo: receiptSerial,
       memberId: data.memberId || 'NXR-001',
       memberName: data.memberName || 'Member',
@@ -280,14 +315,21 @@ export default function App() {
       status: 'approved',
       approvedBy: 'Super Admin',
       approvedAt: new Date().toISOString(),
-      notes: data.notes
+      notes: data.notes || '',
+      isDeleted: false
     };
 
     setInstallments(prev => [newInst, ...prev]);
+
+    try {
+      await saveInstallmentToCloud(newInst);
+    } catch (err) {
+      console.error('Cloud direct installment save error:', err);
+    }
   };
 
-  // Trash & Installment Management Handlers
-  const handleDeleteInstallment = (id: string) => {
+  // Trash & Installment Management Handlers (Cloud Synced)
+  const handleDeleteInstallment = async (id: string) => {
     setInstallments(prev =>
       prev.map(item => {
         if (item.id === id) {
@@ -301,9 +343,15 @@ export default function App() {
         return item;
       })
     );
+
+    try {
+      await updateInstallmentDeletionInCloud(id, true);
+    } catch (err) {
+      console.error('Cloud soft delete error:', err);
+    }
   };
 
-  const handleRestoreInstallment = (id: string) => {
+  const handleRestoreInstallment = async (id: string) => {
     setInstallments(prev =>
       prev.map(item => {
         if (item.id === id) {
@@ -317,6 +365,12 @@ export default function App() {
         return item;
       })
     );
+
+    try {
+      await updateInstallmentDeletionInCloud(id, false);
+    } catch (err) {
+      console.error('Cloud restore error:', err);
+    }
   };
 
   const handlePermanentDeleteInstallment = (id: string) => {
@@ -399,6 +453,7 @@ export default function App() {
           onOpenChangePassword={() => setShowChangePasswordModal(true)}
           pendingCount={pendingCount}
           noticeCount={notices.length}
+          isCloudSynced={isCloudSynced}
         />
 
         {/* MAIN BODY VIEW CONTAINER */}

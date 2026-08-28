@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "Installment": {
+      "title": "Installment",
+      "description": "Monthly equity installment payment submission",
+      "type": "object",
+      "properties": {
+        "receiptNo": { "type": "string" },
+        "memberId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "memberNameBn": { "type": "string" },
+        "month": { "type": "string" },
+        "year": { "type": "number" },
+        "amount": { "type": "number" },
+        "lateFee": { "type": "number" },
+        "method": { "type": "string" },
+        "trxId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "notes": { "type": "string" },
+        "approvedBy": { "type": "string" },
+        "approvedAt": { "type": "string" },
+        "rejectionReason": { "type": "string" },
+        "isDeleted": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["receiptNo", "memberId", "month", "year", "amount", "status"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Company founder shareholder member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nameBn": { "type": "string" },
+        "designationEn": { "type": "string" },
+        "designationBn": { "type": "string" },
+        "share": { "type": "number" },
+        "capital": { "type": "number" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "name", "share"]
+    }
+  },
+  "firestore": {
+    "installments": {
+      "schema": "Installment",
+      "description": "Installments collection"
+    },
+    "members": {
+      "schema": "Member",
+      "description": "Members directory collection"
+    }
+  }
+}
