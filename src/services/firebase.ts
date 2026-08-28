@@ -14,15 +14,15 @@ import {
 import { Installment, Member } from '../types';
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 
-// Configuration
+// Firebase Configuration
 export const firebaseConfig = {
-  projectId: firebaseAppletConfig.projectId || "ai-studio-applet-webapp-b06c8",
-  appId: firebaseAppletConfig.appId || "1:844767791115:web:d2ec118222403bb09bdf0e",
-  apiKey: firebaseAppletConfig.apiKey || "AIzaSyAgzk2UrwfR6UBwk1yTXExPqYK1k9taLIo",
-  authDomain: firebaseAppletConfig.authDomain || "ai-studio-applet-webapp-b06c8.firebaseapp.com",
-  firestoreDatabaseId: firebaseAppletConfig.firestoreDatabaseId || "ai-studio-nexoralimitedsha-e182529d-3c08-4f8e-822c-090b711b2794",
-  storageBucket: firebaseAppletConfig.storageBucket || "ai-studio-applet-webapp-b06c8.firebasestorage.app",
-  messagingSenderId: firebaseAppletConfig.messagingSenderId || "844767791115"
+  apiKey: "AIzaSyAgzk2UrwfR6UBwk1yTXExPqYK1k9taLIo",
+  authDomain: "ai-studio-applet-webapp-b06c8.firebaseapp.com",
+  projectId: "ai-studio-applet-webapp-b06c8",
+  storageBucket: "ai-studio-applet-webapp-b06c8.firebasestorage.app",
+  messagingSenderId: "844767791115",
+  appId: "1:844767791115:web:d2ec118222403bb09bdf0e",
+  firestoreDatabaseId: firebaseAppletConfig.firestoreDatabaseId || "ai-studio-nexoralimitedsha-e182529d-3c08-4f8e-822c-090b711b2794"
 };
 
 // Initialize Firebase App instance
