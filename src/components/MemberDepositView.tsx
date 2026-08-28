@@ -25,30 +25,34 @@ export const MemberDepositView: React.FC<Props> = ({
 }) => {
   const t = translations[lang];
 
-  // Default month and today's date
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Default month and today's real-time date
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
   const monthsList = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  const currentMonthName = monthsList[new Date().getMonth()] || 'September';
+  const currentMonthName = monthsList[now.getMonth()] || 'September';
 
   // Form State
   const [month, setMonth] = useState(currentMonthName);
-  const [year, setYear] = useState(new Date().getFullYear() || 2026);
-  const [paymentDate, setPaymentDate] = useState(todayStr);
+  const [year, setYear] = useState(now.getFullYear() || 2026);
+  const paymentDate = todayStr; // Strictly locked to real-time system date
   const [method, setMethod] = useState('bKash Merchant');
   const [trxId, setTrxId] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedReceipt, setSubmittedReceipt] = useState<Installment | null>(null);
 
-  // Live ticking clock
+  // Live ticking clock & formatted live date
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const [liveDateFormatted, setLiveDateFormatted] = useState(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString());
+      const live = new Date();
+      setCurrentTime(live.toLocaleTimeString());
+      setLiveDateFormatted(live.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -59,7 +63,7 @@ export const MemberDepositView: React.FC<Props> = ({
   // Penalty Calculation Rule:
   // 1st to 10th of the month -> 0 BDT penalty.
   // After 10th (11th to 31st) -> 100 BDT per share.
-  const submissionDay = parseInt(paymentDate.split('-')[2], 10) || new Date(paymentDate).getDate() || 1;
+  const submissionDay = now.getDate() || 1;
   const isLate = submissionDay > 10;
   const calculatedLateFee = isLate ? (member.share || 1) * 100 : 0;
   const totalPayableAmount = baseMonthlyAmount + calculatedLateFee;
@@ -83,38 +87,37 @@ export const MemberDepositView: React.FC<Props> = ({
       lateFee: calculatedLateFee,
       method,
       trxId: finalTrx,
-      date: paymentDate,
+      date: todayStr, // Strictly real-time system date
       status: 'pending',
       notes: notes.trim(),
       isDeleted: false
     };
 
-    setTimeout(() => {
-      onSubmitInstallment(payload);
+    // Synchronous dispatch to prevent any sync delay
+    onSubmitInstallment(payload);
 
-      const previewReceipt: Installment = {
-        id: `TRX-${Date.now().toString().slice(-6)}`,
-        receiptNo: receiptSerial,
-        memberId: member.id,
-        memberName: member.name,
-        memberNameBn: member.nameBn,
-        month,
-        year,
-        amount: totalPayableAmount,
-        lateFee: calculatedLateFee,
-        method,
-        trxId: finalTrx,
-        date: paymentDate,
-        status: 'pending',
-        notes: notes.trim(),
-        isDeleted: false
-      };
+    const previewReceipt: Installment = {
+      id: `TRX-${Date.now().toString().slice(-6)}`,
+      receiptNo: receiptSerial,
+      memberId: member.id,
+      memberName: member.name,
+      memberNameBn: member.nameBn,
+      month,
+      year,
+      amount: totalPayableAmount,
+      lateFee: calculatedLateFee,
+      method,
+      trxId: finalTrx,
+      date: todayStr,
+      status: 'pending',
+      notes: notes.trim(),
+      isDeleted: false
+    };
 
-      setSubmittedReceipt(previewReceipt);
-      setTrxId('');
-      setNotes('');
-      setIsSubmitting(false);
-    }, 350);
+    setSubmittedReceipt(previewReceipt);
+    setTrxId('');
+    setNotes('');
+    setIsSubmitting(false);
   };
 
   return (
@@ -310,19 +313,27 @@ export const MemberDepositView: React.FC<Props> = ({
               </select>
             </div>
 
-            {/* Payment Date Picker (determines penalty) */}
+            {/* Payment Date - Strictly Real-Time Locked */}
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1.5 flex items-center justify-between">
-                <span>{lang === 'bn' ? 'পরিশোধের তারিখ *' : 'Payment Date *'}</span>
-                <span className="text-[10px] text-slate-400">১-১০ তারিখ: ৳০ ফি</span>
+                <span className="flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-emerald-400" />
+                  <span>{lang === 'bn' ? 'জমার তারিখ (রিয়েল-টাইম)' : 'Payment Date (Real-Time)'}</span>
+                </span>
+                <span className="text-[10px] text-emerald-400 font-semibold px-1.5 py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20">
+                  {lang === 'bn' ? 'সিস্টেম লকড' : 'Locked'}
+                </span>
               </label>
-              <input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                required
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-white focus:border-emerald-500 focus:outline-none font-mono"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={`${paymentDate} (${liveDateFormatted})`}
+                  readOnly
+                  disabled
+                  title={lang === 'bn' ? 'সিস্টেম রিয়েল-টাইম তারিখ স্বয়ংক্রিয়ভাবে প্রযোজ্য' : 'Real-time system date is automatically locked'}
+                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl p-3.5 text-xs sm:text-sm text-emerald-300 font-mono cursor-not-allowed select-none opacity-95"
+                />
+              </div>
             </div>
 
             {/* Payment Method */}

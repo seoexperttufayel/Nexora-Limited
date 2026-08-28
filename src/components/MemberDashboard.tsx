@@ -1,17 +1,15 @@
 import React from 'react';
 import { Member, Installment, Language } from '../types';
 import { translations } from '../data/translations';
-import { COMPANY_INFO } from '../data/initialData';
 import { 
-  Wallet, Award, FileText, CheckCircle2, Clock, XCircle, 
-  Send, ArrowRight, ShieldCheck, TrendingUp, Sparkles, Building2
+  Award, FileText, CheckCircle2, Clock, XCircle, 
+  ShieldCheck, TrendingUp, Sparkles, Building2
 } from 'lucide-react';
 
 interface Props {
   member: Member;
   installments: Installment[];
   lang: Language;
-  onNavigateToDeposit: () => void;
   onViewReceipt: (inst: Installment) => void;
   onViewCertificate: (member: Member) => void;
 }
@@ -20,7 +18,6 @@ export const MemberDashboard: React.FC<Props> = ({
   member,
   installments,
   lang,
-  onNavigateToDeposit,
   onViewReceipt,
   onViewCertificate
 }) => {
@@ -66,21 +63,13 @@ export const MemberDashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => onViewCertificate(member)}
             className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs sm:text-sm font-semibold transition shadow-sm"
           >
             <Award className="w-4 h-4 text-amber-400" />
             <span>{t.shareCertificate}</span>
-          </button>
-
-          <button
-            onClick={onNavigateToDeposit}
-            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/25 active:scale-95"
-          >
-            <Send className="w-4 h-4" />
-            <span>{lang === 'bn' ? 'মাসিক কিস্তি জমা দিন' : 'Submit Installment'}</span>
           </button>
         </div>
       </div>
@@ -131,32 +120,6 @@ export const MemberDashboard: React.FC<Props> = ({
 
       </div>
 
-      {/* QUICK DEPOSIT ACTION PROMO BANNER */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
-        <div className="space-y-1 text-center sm:text-left">
-          <div className="inline-flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-            <Send className="w-4 h-4" />
-            <span>{lang === 'bn' ? 'চলতি মাসের কিস্তি পরিশোধ' : 'Monthly Contribution'}</span>
-          </div>
-          <h3 className="text-lg sm:text-xl font-bold text-white">
-            {lang === 'bn' ? 'আপনার মাসিক কিস্তির তথ্য সহজে জমা দিন' : 'Submit Your Monthly Installment Easily'}
-          </h3>
-          <p className="text-xs text-slate-400 max-w-xl">
-            {lang === 'bn' 
-              ? 'বিকাশ, নগদ বা ব্যাংক ট্রান্সফারের মাধ্যমে জমা দিয়ে TrxID সাবমিট করুন। ১-১০ তারিখের মধ্যে জমা দিলে বিলম্ব ফি ৳০।' 
-              : 'Submit your transaction ID for instant admin verification. Submissions on or before the 10th have strictly 0 BDT late fee.'}
-          </p>
-        </div>
-
-        <button
-          onClick={onNavigateToDeposit}
-          className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-emerald-500/25 flex items-center gap-2 shrink-0 active:scale-95"
-        >
-          <span>{lang === 'bn' ? 'কিস্তি জমা দিন' : 'Submit Installment Now'}</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
-
       {/* MEMBER'S INSTALLMENT LEDGER TABLE */}
       <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -187,15 +150,13 @@ export const MemberDashboard: React.FC<Props> = ({
             <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
               {memberInstallments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-500 space-y-2">
-                    <p>{lang === 'bn' ? 'এখনো কোনো কিস্তির রেকর্ড নেই।' : 'No installment records found.'}</p>
-                    <button
-                      onClick={onNavigateToDeposit}
-                      className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{lang === 'bn' ? 'প্রথম কিস্তি জমা দিন' : 'Submit First Installment'}</span>
-                    </button>
+                  <td colSpan={6} className="py-10 text-center text-slate-500 space-y-1">
+                    <p className="font-medium">{lang === 'bn' ? 'এখনো কোনো কিস্তির রেকর্ড নেই।' : 'No installment records found.'}</p>
+                    <p className="text-xs text-slate-400">
+                      {lang === 'bn' 
+                        ? 'নতুন কিস্তি জমা দিতে উপরের নেভিগেশন বার থেকে "মাসিক কিস্তি জমা দিন" বাটনে ক্লিক করুন।' 
+                        : 'To submit your installment, select "Submit Monthly Installment" from the top navigation bar.'}
+                    </p>
                   </td>
                 </tr>
               ) : (

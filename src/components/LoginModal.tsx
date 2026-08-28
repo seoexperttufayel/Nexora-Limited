@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Language, Role, Member } from '../types';
 import { FOUNDER_MEMBERS } from '../data/initialData';
-import { X, Lock, User, ShieldCheck, KeyRound, Sparkles, ChevronRight } from 'lucide-react';
+import { X, Lock, User, KeyRound } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -59,15 +59,9 @@ export const LoginModal: React.FC<Props> = ({ isOpen, lang, members, onClose, on
 
     setError(
       lang === 'bn' 
-        ? 'ভুল আইডি অথবা পাসওয়ার্ড! (ডিফল্ট পাসওয়ার্ড: Nexora@2026)' 
-        : 'Invalid Member ID or Password! (Default password: Nexora@2026)'
+        ? 'ভুল আইডি অথবা পাসওয়ার্ড! (অনুগ্রহ করে সঠিক তথ্য দিয়ে লগইন করুন)' 
+        : 'Invalid Member ID or Password! (Please enter valid credentials)'
     );
-  };
-
-  const fillQuick = (id: string, pass: string) => {
-    setLoginId(id);
-    setPassword(pass);
-    setError('');
   };
 
   return (
@@ -146,64 +140,6 @@ export const LoginModal: React.FC<Props> = ({ isOpen, lang, members, onClose, on
             {lang === 'bn' ? 'লগইন করুন' : 'Secure Login'}
           </button>
         </form>
-
-        {/* Quick Demo Pre-fill Shortcuts */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>{lang === 'bn' ? 'এক ক্লিকে ডেমো টেস্ট করুন:' : '1-Click Demo Logins:'}</span>
-          </p>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => fillQuick('NXR-001', 'Nexora@2026')}
-              className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition flex items-center justify-between group"
-            >
-              <div>
-                <p className="font-semibold text-white group-hover:text-emerald-400">Tufayel (MD)</p>
-                <p className="text-[10px] text-slate-400 font-mono">NXR-001 (10%)</p>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => fillQuick('NXR-002', 'Nexora@2026')}
-              className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition flex items-center justify-between group"
-            >
-              <div>
-                <p className="font-semibold text-white group-hover:text-emerald-400">Mehrab (Dir)</p>
-                <p className="text-[10px] text-slate-400 font-mono">NXR-002 (10%)</p>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => fillQuick('NXR-005', 'Nexora@2026')}
-              className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition flex items-center justify-between group"
-            >
-              <div>
-                <p className="font-semibold text-white group-hover:text-emerald-400">Humayun (Dir)</p>
-                <p className="text-[10px] text-slate-400 font-mono">NXR-005 (5%)</p>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => fillQuick('admin', 'Nexora@2026')}
-              className="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left transition flex items-center justify-between group"
-            >
-              <div>
-                <p className="font-semibold text-emerald-400">Super Admin</p>
-                <p className="text-[10px] text-emerald-500/80 font-mono">admin / All Access</p>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
-            </button>
-          </div>
-        </div>
 
       </div>
     </div>

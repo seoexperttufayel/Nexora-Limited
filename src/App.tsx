@@ -178,9 +178,9 @@ export default function App() {
     const sharePercentage = activeMember?.share || 10;
     const baseAmount = sharePercentage * 1000;
     
-    // Check submission date
-    const submissionDate = data.date || new Date().toISOString().split('T')[0];
-    const day = parseInt(submissionDate.split('-')[2], 10) || new Date(submissionDate).getDate() || 1;
+    // Strict Real-time system date
+    const submissionDate = new Date().toISOString().split('T')[0];
+    const day = new Date().getDate();
     
     // 1st to 10th rule: 0 BDT penalty. Strictly after 10th: 100 BDT per share.
     const calculatedLateFee = day > 10 ? sharePercentage * 100 : 0;
@@ -188,7 +188,7 @@ export default function App() {
     const receiptSerial = data.receiptNo || `NXR-REC-${data.year || new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
 
     const newInst: Installment = {
-      id: `TRX-${Date.now().toString().slice(-6)}`,
+      id: `TRX-${Date.now()}-${Math.floor(Math.random() * 8999 + 1000)}`,
       receiptNo: receiptSerial,
       memberId: activeMember?.id || data.memberId || 'NXR-001',
       memberName: activeMember?.name || data.memberName || 'Member',
@@ -205,40 +205,60 @@ export default function App() {
       isDeleted: false
     };
 
-    setInstallments(prev => [newInst, ...prev]);
+    setInstallments(prev => {
+      const updated = [newInst, ...prev];
+      try {
+        localStorage.setItem('nxr_installments_v4', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Storage sync error:', err);
+      }
+      return updated;
+    });
   };
 
   // Admin Approve Installment
   const handleApproveInstallment = (id: string) => {
-    setInstallments(prev =>
-      prev.map(item => {
+    setInstallments(prev => {
+      const updated = prev.map(item => {
         if (item.id === id) {
           return {
             ...item,
-            status: 'approved',
+            status: 'approved' as const,
             approvedBy: 'Super Admin',
             approvedAt: new Date().toISOString()
           };
         }
         return item;
-      })
-    );
+      });
+      try {
+        localStorage.setItem('nxr_installments_v4', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Storage sync error:', err);
+      }
+      return updated;
+    });
   };
 
   // Admin Reject Installment
   const handleRejectInstallment = (id: string, reason?: string) => {
-    setInstallments(prev =>
-      prev.map(item => {
+    setInstallments(prev => {
+      const updated = prev.map(item => {
         if (item.id === id) {
           return {
             ...item,
-            status: 'rejected',
+            status: 'rejected' as const,
             rejectionReason: reason || 'Information mismatched or unverified.'
           };
         }
         return item;
-      })
-    );
+      });
+      try {
+        localStorage.setItem('nxr_installments_v4', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Storage sync error:', err);
+      }
+      return updated;
+    });
   };
 
   // Direct Admin Installment Add
@@ -431,7 +451,6 @@ export default function App() {
               member={currentUser}
               installments={installments}
               lang={lang}
-              onNavigateToDeposit={() => setActiveTab('member-deposit')}
               onViewReceipt={(inst) => setSelectedReceipt(inst)}
               onViewCertificate={(mem) => setSelectedCertificateMember(mem)}
             />
