@@ -47,6 +47,45 @@ export interface Installment {
   deletedBy?: string;
 }
 
+export interface LedgerTransaction {
+  id: string;
+  voucherNo: string;
+  type: 'credit' | 'debit'; // credit = আয়/জমা, debit = ব্যয়/খরচ
+  title: string;
+  titleBn?: string;
+  category: string;
+  categoryBn?: string;
+  amount: number;
+  date: string;
+  method: string;
+  accountNo?: string;
+  notes?: string;
+  recordedBy: string;
+  refReceiptNo?: string;
+  isDeleted?: boolean;
+  createdAt?: string;
+}
+
+export interface PaymentAccountConfig {
+  id: string;
+  titleEn: string;
+  titleBn: string;
+  type: 'bkash' | 'nagad' | 'bank' | 'rocket' | 'upay' | 'cash' | 'other';
+  accountTypeEn: string; // Merchant / Personal / Corporate
+  accountTypeBn: string;
+  accountNumber: string;
+  accountNameEn?: string;
+  accountNameBn?: string;
+  bankNameEn?: string;
+  bankNameBn?: string;
+  branchEn?: string;
+  branchBn?: string;
+  routingNumber?: string;
+  instructionsEn?: string;
+  instructionsBn?: string;
+  isActive: boolean;
+}
+
 export interface Project {
   id: string;
   titleEn: string;
@@ -77,6 +116,8 @@ export interface Notice {
   contentEn: string;
   contentBn: string;
   important?: boolean;
+  readBy?: string[];
+  dismissedBy?: string[];
 }
 
 export interface CompanyPost {
@@ -107,3 +148,4 @@ export interface ExpenseRecord {
   date: string;
   approvedBy: string;
 }
+

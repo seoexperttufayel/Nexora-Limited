@@ -117,6 +117,13 @@ export const translations = {
     adminDirectEntry: 'সরাসরি অ্যাডমিন কিস্তি এন্ট্রি (তাত্ক্ষণিক অনুমোদিত)',
     adminDirectEntryDesc: 'অফিস কাউন্টার বা ম্যানুয়াল জমার জন্য অ্যাডমিন কর্তৃক সরাসরি যাচাইকৃত এন্ট্রি',
     recordImmediateApproved: 'সরাসরি মূলধনে যোগ করুন',
+    corporateLedger: 'করপোরেট আর্থিক লেজার (আয়-ব্যয় ও ভাউচার)',
+    bankStatement: 'ব্যাংক স্টেটমেন্ট ও আর্থিক বিবরণী',
+    runningBalance: 'অবশিষ্ট জের / ব্যালেন্স',
+    creditInflow: 'জমা / আয় (+)',
+    debitOutflow: 'খরচ / ব্যয় (-)',
+    openingBalance: 'প্রারম্ভিক স্থিতি',
+    closingBalance: 'সমাপ্তি স্থিতি / নীট মূলধন',
     
     // Alert Messages
     successSubmitted: 'কিস্তি সফলভাবে জমা দেওয়া হয়েছে! অ্যাডমিন অনুমোদনের পর ভেরিফাইড হবে।',
@@ -241,6 +248,13 @@ export const translations = {
     adminDirectEntry: 'Direct Admin Installment Entry (Instant Approved)',
     adminDirectEntryDesc: 'Immediate verified record entry for cash/office deposits',
     recordImmediateApproved: 'Record & Add to Capital Ledger',
+    corporateLedger: 'Corporate Financial Ledger (Income-Expense & Voucher)',
+    bankStatement: 'Bank Statement & Treasury Report',
+    runningBalance: 'Running Balance / Net Reserve',
+    creditInflow: 'Credit / Income (+)',
+    debitOutflow: 'Debit / Expense (-)',
+    openingBalance: 'Opening Balance',
+    closingBalance: 'Closing Balance / Net Capital',
     
     // Alert Messages
     successSubmitted: 'Installment submitted successfully! It will be verified by the admin team shortly.',

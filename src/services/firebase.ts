@@ -35,6 +35,8 @@ export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestore
 
 const INSTALLMENTS_COLLECTION = 'installments';
 const MEMBERS_COLLECTION = 'members';
+const PAYMENT_ACCOUNTS_COLLECTION = 'payment_accounts';
+const LEDGER_COLLECTION = 'ledger_transactions';
 
 /**
  * Real-time subscription to installments collection in Firestore.
@@ -139,6 +141,79 @@ export const updateInstallmentDeletionInCloud = async (
     isDeleted,
     deletedAt: isDeleted ? new Date().toISOString() : null
   });
+};
+
+/**
+ * Real-time subscription to payment accounts collection in Firestore
+ */
+export const subscribeToPaymentAccounts = (
+  onData: (accounts: any[]) => void,
+  onError?: (error: Error) => void
+) => {
+  try {
+    const colRef = collection(db, PAYMENT_ACCOUNTS_COLLECTION);
+    return onSnapshot(colRef, (snapshot) => {
+      if (!snapshot.empty) {
+        const items: any[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push(docSnap.data());
+        });
+        onData(items);
+      }
+    }, (err) => {
+      console.warn('Firestore payment accounts subscription error:', err);
+      if (onError) onError(err);
+    });
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+};
+
+/**
+ * Seed initial payment accounts if empty in Firestore
+ */
+export const seedInitialPaymentAccountsIfEmpty = async (defaults: any[]) => {
+  try {
+    const colRef = collection(db, PAYMENT_ACCOUNTS_COLLECTION);
+    const snap = await getDocs(colRef);
+    if (snap.empty && defaults.length > 0) {
+      const batch = writeBatch(db);
+      for (const item of defaults) {
+        const docRef = doc(db, PAYMENT_ACCOUNTS_COLLECTION, item.id);
+        batch.set(docRef, item);
+      }
+      await batch.commit();
+      console.log('Seeded initial payment accounts to Firestore');
+    }
+  } catch (err) {
+    console.warn('Could not seed initial payment accounts:', err);
+  }
+};
+
+/**
+ * Save / Update Payment Account in Firestore
+ */
+export const savePaymentAccountToCloud = async (account: any): Promise<void> => {
+  try {
+    const docRef = doc(db, PAYMENT_ACCOUNTS_COLLECTION, account.id);
+    await setDoc(docRef, account, { merge: true });
+  } catch (err) {
+    console.warn('Cloud save payment account error:', err);
+  }
+};
+
+/**
+ * Delete Payment Account in Firestore
+ */
+export const deletePaymentAccountInCloud = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, PAYMENT_ACCOUNTS_COLLECTION, id);
+    const { deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Cloud delete payment account error:', err);
+  }
 };
 
 /**

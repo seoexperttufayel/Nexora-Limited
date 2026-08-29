@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Installment, Language, Member } from '../types';
 import { COMPANY_INFO } from '../data/initialData';
 import { X, Printer, ShieldCheck, CheckCircle2, Download, Building2 } from 'lucide-react';
@@ -27,13 +27,28 @@ function numberToWords(num: number, lang: Language): string {
 }
 
 export const MoneyReceiptModal: React.FC<Props> = ({ installment, member, lang, onClose }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto print:p-0 print:bg-white">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-4 sm:p-8 shadow-2xl relative text-slate-100 print:bg-white print:text-black print:border-none print:shadow-none print:max-w-none my-auto">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-40 flex items-start justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4 pt-36 sm:pt-40 md:pt-44 pb-12 overflow-y-auto print:p-0 print:bg-white animate-in fade-in duration-200"
+    >
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-4 sm:p-8 shadow-2xl relative text-slate-100 print:bg-white print:text-black print:border-none print:shadow-none print:max-w-none my-2">
         
         {/* Modal Action Bar (hidden when printing) */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800 print:hidden mb-4 sm:mb-6">
@@ -46,15 +61,16 @@ export const MoneyReceiptModal: React.FC<Props> = ({ installment, member, lang, 
           <div className="flex items-center space-x-2">
             <button
               onClick={handlePrint}
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-md"
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-md active:scale-95"
+              title={lang === 'bn' ? 'রসিদ প্রিন্ট করুন' : 'Print Receipt'}
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>{lang === 'bn' ? 'প্রিন্ট করুন' : 'Print'}</span>
+              <span>{lang === 'bn' ? 'প্রিন্ট বা সংরক্ষণ' : 'Print / Save'}</span>
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700"
-              title="Close / বন্ধ করুন"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 transition border border-slate-700 hover:border-rose-500/30"
+              title="Close / বন্ধ করুন (Esc)"
               aria-label="Close Money Receipt"
             >
               <X className="w-5 h-5" />

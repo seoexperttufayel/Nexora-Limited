@@ -46,9 +46,18 @@ export const MemberDashboard: React.FC<Props> = ({
       {/* MEMBER PROFILE HERO BANNER */}
       <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-2xl shadow-lg shadow-emerald-500/20 shrink-0">
-            {member.name.charAt(0)}
-          </div>
+          {member.avatarUrl ? (
+            <img 
+              src={member.avatarUrl} 
+              alt={member.name}
+              className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-lg shadow-emerald-500/20 shrink-0"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-2xl shadow-lg shadow-emerald-500/20 shrink-0">
+              {member.name.charAt(0)}
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
@@ -61,9 +70,11 @@ export const MemberDashboard: React.FC<Props> = ({
             <p className="text-xs sm:text-sm text-emerald-400 font-medium mt-0.5">
               {lang === 'bn' ? member.designationBn : member.designationEn} • {lang === 'bn' ? 'নিবন্ধিত প্রতিষ্ঠাতা অংশীদার' : 'Founder Shareholder'}
             </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Phone: {member.phone} | Email: {member.email}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 mt-1.5">
+              <span><strong className="text-slate-300">Phone:</strong> {member.phone}</span>
+              {member.email && <span>• <strong className="text-slate-300">Email:</strong> {member.email}</span>}
+              {member.nid && <span>• <strong className="text-emerald-400 font-mono">NID:</strong> <span className="font-mono text-emerald-300">{member.nid}</span></span>}
+            </div>
           </div>
         </div>
 

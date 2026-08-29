@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Member, Installment, Language } from '../types';
+import { Member, Installment, Language, LedgerTransaction, PaymentAccountConfig } from '../types';
 import { translations } from '../data/translations';
+import { AdminPaymentAccountsModal } from './AdminPaymentAccountsModal';
 import { 
   ShieldCheck, Wallet, Users, Clock, CheckCircle2, 
   XCircle, Printer, FileText, Check, X,
-  FileSpreadsheet, ArrowUpRight, TrendingUp, Building2,
-  Calendar, Award, AlertCircle, Sparkles
+  FileSpreadsheet, TrendingUp, Building2,
+  Calendar, CreditCard, Landmark, ArrowUpRight, ArrowDownLeft
 } from 'lucide-react';
 
 interface Props {
@@ -15,6 +16,15 @@ interface Props {
   onApprove: (id: string) => void;
   onReject: (id: string, reason?: string) => void;
   onViewReceipt: (inst: Installment) => void;
+  ledgerTransactions?: LedgerTransaction[];
+  onAddLedgerTransaction?: (txn: LedgerTransaction) => void;
+  onDeleteLedgerTransaction?: (id: string) => void;
+  paymentAccounts?: PaymentAccountConfig[];
+  onUpdatePaymentAccount?: (acc: PaymentAccountConfig) => void;
+  onAddPaymentAccount?: (acc: PaymentAccountConfig) => void;
+  onDeletePaymentAccount?: (id: string) => void;
+  onResetPaymentAccounts?: () => void;
+  onNavigateToLedger?: () => void;
 }
 
 export const AdminDashboard: React.FC<Props> = ({
@@ -23,9 +33,17 @@ export const AdminDashboard: React.FC<Props> = ({
   lang,
   onApprove,
   onReject,
-  onViewReceipt
+  onViewReceipt,
+  ledgerTransactions = [],
+  paymentAccounts = [],
+  onUpdatePaymentAccount,
+  onAddPaymentAccount,
+  onDeletePaymentAccount,
+  onResetPaymentAccounts,
+  onNavigateToLedger
 }) => {
   const t = translations[lang];
+  const [showPaymentAccountsModal, setShowPaymentAccountsModal] = useState(false);
 
   // Modals & Confirmation states
   const [rejectModalId, setRejectModalId] = useState<string | null>(null);
@@ -38,7 +56,19 @@ export const AdminDashboard: React.FC<Props> = ({
   const pendingInstallments = activeInstallments.filter(i => i.status === 'pending');
   const approvedInstallments = activeInstallments.filter(i => i.status === 'approved');
 
-  const totalCapitalVerified = approvedInstallments.reduce((sum, i) => sum + i.amount, 0);
+  // Ledger Calculations for Net Capital Synchronization
+  const activeLedger = ledgerTransactions.filter(t => !t.isDeleted);
+  const totalLedgerCredits = activeLedger
+    .filter(t => t.type === 'credit')
+    .reduce((acc, curr) => acc + curr.amount, 0);
+  const totalLedgerDebits = activeLedger
+    .filter(t => t.type === 'debit')
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const totalCapitalVerified = totalLedgerCredits > 0 
+    ? (totalLedgerCredits - totalLedgerDebits)
+    : approvedInstallments.reduce((sum, i) => sum + i.amount, 0);
+
   const totalPendingAmount = pendingInstallments.reduce((sum, i) => sum + i.amount, 0);
   const totalSoldShares = activeMembers.reduce((sum, m) => sum + m.share, 0);
   const monthlySubscriptionTarget = totalSoldShares * 1000;
@@ -107,10 +137,29 @@ export const AdminDashboard: React.FC<Props> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 relative z-10">
+        <div className="flex flex-wrap items-center gap-2.5 relative z-10">
+          {onNavigateToLedger && (
+            <button
+              onClick={onNavigateToLedger}
+              className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs sm:text-sm font-semibold transition"
+            >
+              <Landmark className="w-4 h-4" />
+              <span>{lang === 'bn' ? 'করপোরেট আর্থিক লেজার' : 'Corporate Ledger'}</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowPaymentAccountsModal(true)}
+            className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-semibold transition"
+            title="Manage Payment Gateways"
+          >
+            <CreditCard className="w-4 h-4 text-amber-400" />
+            <span>{lang === 'bn' ? 'পেমেন্ট চ্যানেল সেটিংস' : 'Payment Accounts'}</span>
+          </button>
+
           <button
             onClick={handleExportCSV}
-            className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-semibold transition"
+            className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-semibold transition"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
             <span>{t.exportExcel}</span>
@@ -118,7 +167,7 @@ export const AdminDashboard: React.FC<Props> = ({
 
           <button
             onClick={() => window.print()}
-            className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs transition"
+            className="flex items-center space-x-1.5 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs transition"
             title="Print Summary"
           >
             <Printer className="w-4 h-4" />
@@ -139,9 +188,14 @@ export const AdminDashboard: React.FC<Props> = ({
           <p className="text-3xl font-black text-emerald-400 font-mono">
             ৳ {totalCapitalVerified.toLocaleString()}
           </p>
-          <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-400">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{approvedInstallments.length} {lang === 'bn' ? 'অনুমোদিত ডিপোজিট' : 'Approved Deposits'}</span>
+          <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{lang === 'bn' ? 'কার্যকর ট্রেজারি ব্যালেন্স' : 'Net Active Reserve'}</span>
+            </div>
+            {totalLedgerDebits > 0 && (
+              <span className="text-[11px] text-rose-400 font-mono">-৳{totalLedgerDebits.toLocaleString()} {lang === 'bn' ? 'ব্যয়' : 'exp'}</span>
+            )}
           </div>
         </div>
 
@@ -162,33 +216,33 @@ export const AdminDashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg relative overflow-hidden group">
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.totalExpectedMonthly}</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <Calendar className="w-4 h-4" />
             </div>
           </div>
           <p className="text-3xl font-black text-white font-mono">
             ৳ {monthlySubscriptionTarget.toLocaleString()}
           </p>
-          <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-400">
-            <span>{totalSoldShares}% Equity Total ({activeMembers.length} Members)</span>
+          <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-400 font-mono">
+            <span>{totalSoldShares}% {lang === 'bn' ? 'বিক্রীত ইকুইটি' : 'Sold Equity'}</span>
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg relative overflow-hidden group">
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.totalFounders}</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
               <Users className="w-4 h-4" />
             </div>
           </div>
           <p className="text-3xl font-black text-white font-mono">
             {activeMembers.length}
           </p>
-          <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-400">
-            <span>{managementMembers.length} Management • {advisoryMembers.length} Advisory</span>
+          <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-400">
+            <span>13 {lang === 'bn' ? 'জন নিবন্ধিত উদ্যোক্তা' : 'Founders Registered'}</span>
           </div>
         </div>
       </div>
@@ -196,250 +250,244 @@ export const AdminDashboard: React.FC<Props> = ({
       {/* ========================================================================= */}
       {/* 1. PRIMARY APPROVAL QUEUE (অনুমোদন কিউ) */}
       {/* ========================================================================= */}
-      <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <Clock className="w-5 h-5" />
+          <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">{t.approvalQueue}</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {lang === 'bn' 
+                      ? 'সদস্যদের জমা দেওয়া কিস্তির পেমেন্ট ও TrxID যাচাই করে অনুমোদন বা প্রত্যাখ্যান করুন' 
+                      : 'Review member payment proof and transaction IDs for formal ledger approval'}
+                  </p>
+                </div>
+              </div>
+
+              <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono ${
+                pendingInstallments.length > 0
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              }`}>
+                {pendingInstallments.length} {lang === 'bn' ? 'টি অপেক্ষমাণ' : 'Pending'}
+              </span>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">{t.approvalQueue}</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {lang === 'bn' 
-                  ? 'সদস্যদের জমা দেওয়া কিস্তির পেমেন্ট ও TrxID যাচাই করে অনুমোদন বা প্রত্যাখ্যান করুন' 
-                  : 'Review member payment proof and transaction IDs for formal ledger approval'}
-              </p>
-            </div>
+
+            {pendingInstallments.length === 0 ? (
+              <div className="text-center py-12 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+                <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-60" />
+                <p className="text-sm font-semibold text-slate-300">{t.noPending}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {lang === 'bn' ? 'সব কিস্তি যাচাই ও অনুমোদন সম্পন্ন হয়েছে।' : 'All pending installment submissions have been processed.'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] font-semibold border-b border-slate-800">
+                    <tr>
+                      <th className="p-4">{t.receiptNo}</th>
+                      <th className="p-4">{t.member}</th>
+                      <th className="p-4">{t.monthYear}</th>
+                      <th className="p-4">{t.amount}</th>
+                      <th className="p-4">{t.paymentMethod} / TrxID</th>
+                      <th className="p-4">{t.date}</th>
+                      <th className="p-4 text-right">{t.action}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {pendingInstallments.map((inst) => (
+                      <tr key={inst.id} className="hover:bg-slate-850/60 transition">
+                        <td className="p-4 font-mono font-bold text-emerald-400">
+                          {inst.receiptNo || inst.id}
+                        </td>
+                        <td className="p-4">
+                          <p className="font-bold text-white">
+                            {lang === 'bn' ? (inst.memberNameBn || inst.memberName) : inst.memberName}
+                          </p>
+                          <p className="text-[11px] text-slate-400 font-mono">{inst.memberId}</p>
+                        </td>
+                        <td className="p-4 font-medium">
+                          {inst.month} {inst.year}
+                        </td>
+                        <td className="p-4">
+                          <span className="text-sm font-bold text-white font-mono">৳ {inst.amount.toLocaleString()}</span>
+                          {inst.lateFee > 0 && (
+                            <span className="block text-[10px] text-amber-400 font-mono">
+                              (Late: +৳{inst.lateFee})
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-4">
+                          <p className="text-slate-200">{inst.method}</p>
+                          <p className="font-mono text-emerald-400 font-bold text-[11px]">{inst.trxId}</p>
+                        </td>
+                        <td className="p-4 text-slate-400 font-mono">
+                          {inst.date}
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => onViewReceipt(inst)}
+                              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                              title={t.viewReceipt}
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => onApprove(inst.id)}
+                              className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition flex items-center space-x-1 shadow-md shadow-emerald-500/20"
+                            >
+                              <Check className="w-4 h-4" />
+                              <span>{t.approve}</span>
+                            </button>
+                            <button
+                              onClick={() => setRejectModalId(inst.id)}
+                              className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold transition flex items-center space-x-1"
+                            >
+                              <X className="w-4 h-4" />
+                              <span>{t.reject}</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono ${
-            pendingInstallments.length > 0
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-          }`}>
-            {pendingInstallments.length} {lang === 'bn' ? 'টি অপেক্ষমাণ' : 'Pending'}
-          </span>
-        </div>
+          {/* ========================================================================= */}
+          {/* 2. RECENT APPROVED LEDGER & GOVERNANCE SUMMARY */}
+          {/* ========================================================================= */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Recent 6 Verified Deposits */}
+            <div className="lg:col-span-2 p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">
+                      {lang === 'bn' ? 'সাম্প্রতিক অনুমোদিত কিস্তিসমূহ' : 'Recent Verified Deposits'}
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      {lang === 'bn' ? 'সরাসরি ডিজিটাল রসিদ ও ভাউচার দেখুন' : 'Latest verified installment money receipts'}
+                    </p>
+                  </div>
+                </div>
 
-        {pendingInstallments.length === 0 ? (
-          <div className="p-10 text-center bg-slate-950 rounded-2xl border border-slate-800/80 text-slate-400 text-sm space-y-2">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto opacity-90" />
-            <p className="font-semibold text-white">{lang === 'bn' ? 'সকল কিস্তি অনুমোদিত এবং হালনাগাদ রয়েছে!' : 'All installments are reviewed and up to date!'}</p>
-            <p className="text-xs text-slate-500">{t.noPending}</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase font-semibold bg-slate-950/40">
-                  <th className="py-3.5 px-4">{t.member}</th>
-                  <th className="py-3.5 px-4">{t.month}</th>
-                  <th className="py-3.5 px-4">{t.amount}</th>
-                  <th className="py-3.5 px-4">{t.method}</th>
-                  <th className="py-3.5 px-4">{t.date}</th>
-                  <th className="py-3.5 px-4 text-right">{t.actions}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
-                {pendingInstallments.map((inst) => (
-                  <tr key={inst.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-3.5 px-4 font-semibold text-white">
-                      <div>{lang === 'bn' ? (inst.memberNameBn || inst.memberName) : inst.memberName}</div>
-                      <div className="text-[11px] text-emerald-400 font-mono">{inst.memberId}</div>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-300 font-medium">
-                      {inst.month} {inst.year}
-                    </td>
-                    <td className="py-3.5 px-4 font-bold text-emerald-400 font-mono">
-                      <div>৳ {inst.amount.toLocaleString()}</div>
-                      {inst.lateFee > 0 && (
-                        <div className="text-[10px] text-amber-400 font-normal">
-                          (Late Fee: ৳{inst.lateFee})
+                <span className="text-xs font-mono text-emerald-400 font-semibold">
+                  {approvedInstallments.length} Verified
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {recentApproved.map((inst) => (
+                  <div
+                    key={inst.id}
+                    className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center space-x-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold font-mono text-xs">
+                        {inst.memberId.replace('NXR-', '')}
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-xs sm:text-sm font-bold text-white">
+                            {lang === 'bn' ? (inst.memberNameBn || inst.memberName) : inst.memberName}
+                          </p>
+                          <span className="text-[10px] text-slate-400 font-mono">({inst.memberId})</span>
                         </div>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-300">
-                      <div>{inst.method}</div>
-                      <div className="text-[11px] text-slate-400 font-mono">{inst.trxId}</div>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-400 font-mono text-xs">
-                      {inst.date}
-                    </td>
-                    <td className="py-3.5 px-4 text-right space-x-2 whitespace-nowrap">
-                      <button
-                        onClick={() => onApprove(inst.id)}
-                        className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition inline-flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>{t.approve}</span>
-                      </button>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {inst.month} {inst.year} • {inst.method} • <span className="font-mono text-slate-300">{inst.date}</span>
+                        </p>
+                      </div>
+                    </div>
 
-                      <button
-                        onClick={() => {
-                          setRejectModalId(inst.id);
-                          setRejectReason('');
-                        }}
-                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl text-xs font-semibold transition inline-flex items-center gap-1"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        <span>{t.reject}</span>
-                      </button>
+                    <div className="flex items-center space-x-3 shrink-0">
+                      <div className="text-right">
+                        <span className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
+                          ৳ {inst.amount.toLocaleString()}
+                        </span>
+                        <span className="block text-[10px] text-emerald-500 font-semibold">
+                          Verified
+                        </span>
+                      </div>
 
                       <button
                         onClick={() => onViewReceipt(inst)}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition inline-flex items-center gap-1 border border-slate-700"
-                        title="View Submission Details"
+                        className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition"
+                        title={t.viewReceipt}
                       >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>{t.viewReceipt}</span>
+                        <FileText className="w-4 h-4 text-emerald-400" />
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. RECENT VERIFIED TRANSACTIONS & CAPITAL BREAKDOWN */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* RECENT VERIFIED TRANSACTIONS (2 Cols) */}
-        <div className="lg:col-span-2 p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
               </div>
+            </div>
+
+            {/* Committee Structure & Equity Ratio */}
+            <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
               <div>
-                <h3 className="text-lg font-bold text-white">
-                  {lang === 'bn' ? 'সাম্প্রতিক অনুমোদিত কিস্তিসমূহ' : 'Recent Verified Deposits'}
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-emerald-400" />
+                  <span>{lang === 'bn' ? 'কমিটি ইকুইটি ও মূলধন অনুপাত' : 'Committee Equity Breakdown'}</span>
                 </h3>
-                <p className="text-xs text-slate-400">
-                  {lang === 'bn' ? 'সর্বশেষ যাচাইকৃত ও সংরক্ষিত মানি রসিদ' : 'Latest verified contributions and receipts'}
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {lang === 'bn' ? 'ব্যবস্থাপনা ও উপদেষ্টা পরিষদের ক্যাপিটাল শেয়ার' : 'Management vs Advisory Council Distribution'}
                 </p>
               </div>
-            </div>
-            <span className="text-xs font-mono text-emerald-400 font-bold">
-              {approvedInstallments.length} Total Approved
-            </span>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs sm:text-sm">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase font-semibold bg-slate-950/40">
-                  <th className="py-3 px-3">{t.receiptNo}</th>
-                  <th className="py-3 px-3">{t.member}</th>
-                  <th className="py-3 px-3">{t.month}</th>
-                  <th className="py-3 px-3">{t.amount}</th>
-                  <th className="py-3 px-3 text-right">{t.actions}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {recentApproved.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-500">
-                      {lang === 'bn' ? 'এখনো কোনো অনুমোদিত ডিপোজিট নেই।' : 'No approved deposits yet.'}
-                    </td>
-                  </tr>
-                ) : (
-                  recentApproved.map((inst) => (
-                    <tr key={inst.id} className="hover:bg-slate-800/30 transition">
-                      <td className="py-3 px-3 font-mono text-xs font-bold text-slate-300">
-                        {inst.receiptNo || `NXR-${inst.id}`}
-                      </td>
-                      <td className="py-3 px-3 font-semibold text-white">
-                        <div>{lang === 'bn' ? (inst.memberNameBn || inst.memberName) : inst.memberName}</div>
-                        <div className="text-[10px] text-emerald-400 font-mono">{inst.memberId}</div>
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">
-                        {inst.month} {inst.year}
-                      </td>
-                      <td className="py-3 px-3 font-bold text-emerald-400 font-mono">
-                        ৳ {inst.amount.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <button
-                          onClick={() => onViewReceipt(inst)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-semibold transition border border-slate-700 inline-flex items-center gap-1"
-                        >
-                          <FileText className="w-3 h-3" />
-                          <span>{t.viewReceipt}</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              <div className="space-y-4">
+                {/* Management Committee */}
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-white">{lang === 'bn' ? 'ব্যবস্থাপনা কমিটি (সিলেট)' : 'Management (Domestic)'}</span>
+                    <span className="font-mono font-bold text-emerald-400">{managementShares}% Share</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(managementShares / 80) * 100}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                    <span>{managementMembers.length} Members</span>
+                    <span className="font-mono text-white font-semibold">৳ {managementCapital.toLocaleString()}</span>
+                  </div>
+                </div>
 
-        {/* EQUITY & CAPITAL DISTRIBUTION BREAKDOWN (1 Col) */}
-        <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6 flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <Building2 className="w-4 h-4" />
+                {/* Advisory Council */}
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-white">{lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাসী)' : 'Advisory (Overseas)'}</span>
+                    <span className="font-mono font-bold text-emerald-400">{advisoryShares}% Share</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${(advisoryShares / 80) * 100}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                    <span>{advisoryMembers.length} Members</span>
+                    <span className="font-mono text-white font-semibold">৳ {advisoryCapital.toLocaleString()}</span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">
-                  {lang === 'bn' ? 'ইকুইটি ও মূলধন বিন্যাস' : 'Capital Allocation'}
-                </h3>
-                <p className="text-xs text-slate-400">
-                  {lang === 'bn' ? 'পরিষদভিত্তিক অংশীদারিত্ব' : 'Governance Equity Share'}
-                </p>
+
+              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>
+                  {lang === 'bn' 
+                    ? 'মোট বরাদ্দকৃত ৮০% প্রতিষ্ঠাতা ইকুইটি অনুমোদিত শরিয়াহ নীতি অনুযায়ী সংকলিত।' 
+                    : '80% Founder Equity compiled under verified Shariah-compliant bylaws.'}
+                </span>
               </div>
             </div>
 
-            <div className="space-y-4 pt-2">
-              {/* Management Committee */}
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-white">{lang === 'bn' ? 'ব্যবস্থাপনা কমিটি (সিলেট)' : 'Management (Domestic)'}</span>
-                  <span className="font-mono font-bold text-emerald-400">{managementShares}% Share</span>
-                </div>
-                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(managementShares / 80) * 100}%` }} />
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                  <span>{managementMembers.length} Members</span>
-                  <span className="font-mono text-white font-semibold">৳ {managementCapital.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Advisory Council */}
-              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-white">{lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাসী)' : 'Advisory (Overseas)'}</span>
-                  <span className="font-mono font-bold text-emerald-400">{advisoryShares}% Share</span>
-                </div>
-                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${(advisoryShares / 80) * 100}%` }} />
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                  <span>{advisoryMembers.length} Members</span>
-                  <span className="font-mono text-white font-semibold">৳ {advisoryCapital.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
           </div>
-
-          <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>
-              {lang === 'bn' 
-                ? 'মোট বরাদ্দকৃত ৮০% প্রতিষ্ঠাতা ইকুইটি অনুমোদিত শরিয়াহ নীতি অনুযায়ী সংকলিত।' 
-                : '80% Founder Equity compiled under verified Shariah-compliant bylaws.'}
-            </span>
-          </div>
-        </div>
-
-      </div>
 
       {/* REJECT WITH REASON MODAL */}
       {rejectModalId && (
@@ -492,6 +540,18 @@ export const AdminDashboard: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* PAYMENT ACCOUNTS CONFIGURATION MODAL */}
+      <AdminPaymentAccountsModal
+        isOpen={showPaymentAccountsModal}
+        lang={lang}
+        paymentAccounts={paymentAccounts}
+        onClose={() => setShowPaymentAccountsModal(false)}
+        onUpdateAccount={onUpdatePaymentAccount || (() => {})}
+        onAddAccount={onAddPaymentAccount || (() => {})}
+        onDeleteAccount={onDeletePaymentAccount || (() => {})}
+        onResetDefaults={onResetPaymentAccounts}
+      />
 
     </div>
   );

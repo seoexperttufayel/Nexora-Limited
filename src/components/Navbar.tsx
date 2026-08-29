@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Language, Role } from '../types';
 import { translations } from '../data/translations';
+import { NexoraLogo } from './NexoraLogo';
 import { 
   ShieldCheck, Globe, Lock, LogOut, UserCheck, 
   Menu, X, Sparkles, Building2, Bell, FileText, CheckCircle2,
-  KeyRound, ChevronRight, User, Cloud, CloudCheck
+  KeyRound, ChevronRight, User, Landmark
 } from 'lucide-react';
 
 interface Props {
@@ -47,7 +48,7 @@ export const Navbar: React.FC<Props> = ({
   };
 
   return (
-    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-xl print:hidden">
+    <header className="bg-slate-900/98 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 shadow-2xl transition-none will-change-transform print:hidden w-full">
       
       {/* TOP ANNOUNCEMENT & SHARIAH BAR */}
       <div className="bg-emerald-950/40 border-b border-emerald-500/10 px-3 sm:px-4 py-1.5 text-xs text-slate-300">
@@ -79,25 +80,10 @@ export const Navbar: React.FC<Props> = ({
         
         {/* Brand Logo & Name */}
         <div 
-          className="flex items-center space-x-2.5 sm:space-x-3.5 cursor-pointer group shrink-0"
+          className="flex items-center cursor-pointer group shrink-0"
           onClick={() => setActiveTab(role === 'admin' ? 'admin-dashboard' : role === 'member' ? 'member-dashboard' : 'home')}
         >
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center font-black text-slate-950 text-xl sm:text-2xl shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition">
-            N
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <h1 className="text-base sm:text-xl font-bold tracking-tight text-white group-hover:text-emerald-400 transition">
-                {t.appName}
-              </h1>
-              <span className="text-[9px] sm:text-[10px] uppercase font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                LTD
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 hidden lg:block truncate max-w-xs xl:max-w-sm">
-              {t.tagline}
-            </p>
-          </div>
+          <NexoraLogo size="md" variant="full" />
         </div>
 
         {/* Right Action Tools: Notice Board Button directly adjacent to Language Switcher */}
@@ -292,6 +278,17 @@ export const Navbar: React.FC<Props> = ({
                 {lang === 'bn' ? 'কিস্তি জমা দিন' : 'Deposit Installment'}
               </button>
               <button
+                onClick={() => setActiveTab('financial-ledger')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
+                  activeTab === 'financial-ledger'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <Landmark className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'আর্থিক লেজার (আয়-ব্যয়)' : 'Financial Ledger'}</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('installments')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
                   activeTab === 'installments'
@@ -379,6 +376,7 @@ export const Navbar: React.FC<Props> = ({
                 <>
                   <button onClick={() => handleNavClick('admin-dashboard')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.adminPanel}</button>
                   <button onClick={() => handleNavClick('admin-deposit')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'কিস্তি জমা দিন' : 'Deposit Installment'}</button>
+                  <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'করপোরেট আর্থিক লেজার' : 'Corporate Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('installments')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.installments}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
                   <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5 col-span-2 sm:col-span-1">

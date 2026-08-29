@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Notice, Language, Role } from '../types';
 import { translations } from '../data/translations';
 import { 
   X, Bell, Calendar, AlertCircle, FileText, CheckCircle2, 
-  PlusCircle, Trash2, Tag, Send, AlertTriangle, Sparkles
+  PlusCircle, Trash2, Tag, Send, AlertTriangle, Sparkles,
+  CheckCheck, Eye, EyeOff, RotateCcw
 } from 'lucide-react';
 
 interface Props {
@@ -33,8 +34,62 @@ export const NoticeBoardModal: React.FC<Props> = ({
   const [category, setCategory] = useState<'general' | 'agm' | 'installment' | 'dividend'>('general');
   const [important, setImportant] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  
+  // Read and dismissed notices persistence
+  const [readNoticeIds, setReadNoticeIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('nxr_read_notices');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [dismissedNoticeIds, setDismissedNoticeIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('nxr_dismissed_notices');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('nxr_read_notices', JSON.stringify(readNoticeIds));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [readNoticeIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('nxr_dismissed_notices', JSON.stringify(dismissedNoticeIds));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [dismissedNoticeIds]);
 
   if (!isOpen) return null;
+
+  const toggleMarkAsRead = (id: string) => {
+    setReadNoticeIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const markAllAsRead = () => {
+    const allIds = notices.map(n => n.id);
+    setReadNoticeIds(allIds);
+  };
+
+  const handleDismissNotice = (id: string) => {
+    setDismissedNoticeIds(prev => [...prev, id]);
+  };
+
+  const restoreDismissedNotices = () => {
+    setDismissedNoticeIds([]);
+  };
 
   const handleCreateNotice = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,14 +120,20 @@ export const NoticeBoardModal: React.FC<Props> = ({
     setShowAddForm(false);
   };
 
-  const filteredNotices = notices.filter(n => {
+  // Filter out dismissed notices for user view
+  const activeNotices = notices.filter(n => !dismissedNoticeIds.includes(n.id));
+
+  const filteredNotices = activeNotices.filter(n => {
+    if (filterCategory === 'unread') return !readNoticeIds.includes(n.id);
     if (filterCategory === 'all') return true;
     return n.category === filterCategory;
   });
 
+  const unreadCount = activeNotices.filter(n => !readNoticeIds.includes(n.id)).length;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-8 shadow-2xl relative text-slate-100 space-y-6 max-h-[90vh] flex flex-col my-auto">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-8 shadow-2xl relative text-slate-100 space-y-5 max-h-[90vh] flex flex-col my-auto">
         
         {/* Header with Clear Close Cross Button */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
@@ -86,8 +147,13 @@ export const NoticeBoardModal: React.FC<Props> = ({
                   {lang === 'bn' ? 'বিজ্ঞপ্তি বোর্ড ও নোটিশ' : 'Official Notice Board'}
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono font-bold border border-amber-500/20">
-                  {notices.length}
+                  {activeNotices.length}
                 </span>
+                {unreadCount > 0 && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30 animate-pulse">
+                    {unreadCount} {lang === 'bn' ? 'নতুন' : 'New'}
+                  </span>
+                )}
               </div>
               <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
                 {lang === 'bn' ? 'সাধারণ সভা, কিস্তি আহ্বান ও প্রশাসনিক বিজ্ঞপ্তি' : 'AGM notices, installment announcements, and Shariah circulars'}
@@ -254,48 +320,86 @@ export const NoticeBoardModal: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Category Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 pb-1">
-          <button
-            onClick={() => setFilterCategory('all')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-              filterCategory === 'all'
-                ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                : 'bg-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            {lang === 'bn' ? 'সকল' : 'All'} ({notices.length})
-          </button>
-          <button
-            onClick={() => setFilterCategory('installment')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-              filterCategory === 'installment'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                : 'bg-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            {lang === 'bn' ? 'কিস্তি' : 'Installment'}
-          </button>
-          <button
-            onClick={() => setFilterCategory('agm')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-              filterCategory === 'agm'
-                ? 'bg-purple-500 text-white font-bold shadow-sm'
-                : 'bg-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            {lang === 'bn' ? 'সাধারণ সভা' : 'AGM'}
-          </button>
-          <button
-            onClick={() => setFilterCategory('general')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-              filterCategory === 'general'
-                ? 'bg-blue-500 text-white font-bold shadow-sm'
-                : 'bg-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            {lang === 'bn' ? 'সাধারণ' : 'General'}
-          </button>
+        {/* Action Bar: Category Filters & Mark All as Read */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-slate-800/80">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setFilterCategory('all')}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                filterCategory === 'all'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {lang === 'bn' ? 'সকল' : 'All'} ({activeNotices.length})
+            </button>
+            {unreadCount > 0 && (
+              <button
+                onClick={() => setFilterCategory('unread')}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                  filterCategory === 'unread'
+                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                    : 'bg-slate-800 text-emerald-400 hover:text-emerald-300'
+                }`}
+              >
+                {lang === 'bn' ? 'অপঠিত' : 'Unread'} ({unreadCount})
+              </button>
+            )}
+            <button
+              onClick={() => setFilterCategory('installment')}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                filterCategory === 'installment'
+                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {lang === 'bn' ? 'কিস্তি' : 'Installment'}
+            </button>
+            <button
+              onClick={() => setFilterCategory('agm')}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                filterCategory === 'agm'
+                  ? 'bg-purple-500 text-white font-bold shadow-sm'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {lang === 'bn' ? 'সাধারণ সভা' : 'AGM'}
+            </button>
+            <button
+              onClick={() => setFilterCategory('general')}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                filterCategory === 'general'
+                  ? 'bg-blue-500 text-white font-bold shadow-sm'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {lang === 'bn' ? 'সাধারণ' : 'General'}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[11px] font-semibold transition flex items-center gap-1"
+                title="Mark all as read"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'সব পড়া হয়েছে' : 'Mark All as Read'}</span>
+              </button>
+            )}
+
+            {dismissedNoticeIds.length > 0 && (
+              <button
+                onClick={restoreDismissedNotices}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-[11px] transition flex items-center gap-1"
+                title="Restore cleared notices"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>{lang === 'bn' ? `মুছে ফেলা ফিরিয়ে আনুন (${dismissedNoticeIds.length})` : `Restore (${dismissedNoticeIds.length})`}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Notices List (Scrollable) */}
@@ -305,74 +409,115 @@ export const NoticeBoardModal: React.FC<Props> = ({
               {lang === 'bn' ? 'কোনো নোটিশ পাওয়া যায়নি।' : 'No notices in this category.'}
             </div>
           ) : (
-            filteredNotices.map((notice) => (
-              <div
-                key={notice.id}
-                className={`p-4 sm:p-5 rounded-2xl border transition space-y-2.5 relative group ${
-                  notice.important
-                    ? 'bg-amber-500/5 border-amber-500/30'
-                    : 'bg-slate-950 border-slate-800/80 hover:border-slate-700'
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                      notice.category === 'agm'
-                        ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                        : notice.category === 'installment'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : notice.category === 'dividend'
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                    }`}>
-                      {notice.category.toUpperCase()}
-                    </span>
-
-                    {notice.important && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                        {lang === 'bn' ? 'জরুরি' : 'URGENT'}
+            filteredNotices.map((notice) => {
+              const isRead = readNoticeIds.includes(notice.id);
+              return (
+                <div
+                  key={notice.id}
+                  className={`p-4 sm:p-5 rounded-2xl border transition space-y-2.5 relative group ${
+                    !isRead
+                      ? 'bg-emerald-950/20 border-emerald-500/40 shadow-md shadow-emerald-500/5'
+                      : notice.important
+                      ? 'bg-amber-500/5 border-amber-500/30 opacity-90'
+                      : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700 opacity-80'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                        notice.category === 'agm'
+                          ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                          : notice.category === 'installment'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : notice.category === 'dividend'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                      }`}>
+                        {notice.category.toUpperCase()}
                       </span>
-                    )}
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {notice.date}
-                    </span>
+                      {notice.important && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                          {lang === 'bn' ? 'জরুরি' : 'URGENT'}
+                        </span>
+                      )}
 
-                    {/* Admin Delete Notice Button */}
-                    {role === 'admin' && onDeleteNotice && (
+                      {!isRead ? (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">
+                          ● {lang === 'bn' ? 'অপঠিত' : 'UNREAD'}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">
+                          ✓ {lang === 'bn' ? 'পড়া হয়েছে' : 'READ'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {notice.date}
+                      </span>
+
+                      {/* Mark as Read / Unread toggle */}
                       <button
-                        onClick={() => {
-                          if (window.confirm(lang === 'bn' ? 'এই নোটিশটি মুছে ফেলতে চান?' : 'Delete this notice?')) {
-                            onDeleteNotice(notice.id);
-                          }
-                        }}
-                        className="p-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition"
-                        title="Delete notice"
+                        onClick={() => toggleMarkAsRead(notice.id)}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition flex items-center gap-1 ${
+                          isRead
+                            ? 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                            : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30'
+                        }`}
+                        title={isRead ? (lang === 'bn' ? 'অপঠিত হিসেবে চিহ্নিত করুন' : 'Mark as unread') : (lang === 'bn' ? 'পড়া হয়েছে হিসেবে চিহ্নিত করুন' : 'Mark as read')}
+                      >
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span className="hidden sm:inline">
+                          {isRead ? (lang === 'bn' ? 'পড়া হয়েছে' : 'Read') : (lang === 'bn' ? 'পড়া হয়েছে চিহ্নিত করুন' : 'Mark as Read')}
+                        </span>
+                      </button>
+
+                      {/* Delete / Dismiss from view button for shareholder */}
+                      <button
+                        onClick={() => handleDismissNotice(notice.id)}
+                        className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 transition"
+                        title={lang === 'bn' ? 'আমার ভিউ থেকে মুছে ফেলুন' : 'Delete from view'}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
+
+                      {/* Admin Permanent Delete Notice Button */}
+                      {role === 'admin' && onDeleteNotice && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(lang === 'bn' ? 'স্থায়ীভাবে এই নোটিশটি সিস্টেম থেকে মুছে ফেলতে চান?' : 'Permanently delete this notice from system?')) {
+                              onDeleteNotice(notice.id);
+                            }
+                          }}
+                          className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[10px] font-bold transition flex items-center gap-1"
+                          title="Admin Permanent Purge"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span className="hidden sm:inline">{lang === 'bn' ? 'স্থায়ী মুছুন' : 'Purge'}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  <h3 className={`text-sm sm:text-base font-bold leading-snug ${!isRead ? 'text-white font-extrabold' : 'text-slate-200'}`}>
+                    {lang === 'bn' ? notice.titleBn : notice.titleEn}
+                  </h3>
+
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+                    {lang === 'bn' ? notice.contentBn : notice.contentEn}
+                  </p>
                 </div>
-
-                <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
-                  {lang === 'bn' ? notice.titleBn : notice.titleEn}
-                </h3>
-
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">
-                  {lang === 'bn' ? notice.contentBn : notice.contentEn}
-                </p>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
         {/* Footer note */}
         <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-          <span>{lang === 'bn' ? 'সকল বিজ্ঞপ্তি ব্যবস্থাপনা কর্তৃপক্ষ কর্তৃক স্বাক্ষরিত।' : 'All corporate circulars are issued by the Board of Directors.'}</span>
+          <span>{lang === 'bn' ? 'সকল বিজ্ঞপ্তি পরিচালনা পরিষদ কর্তৃক অনুমোদিত।' : 'All circulars authorized by the Board of Directors.'}</span>
           <button
             onClick={onClose}
             className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold transition"

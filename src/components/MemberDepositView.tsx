@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Member, Installment, Language } from '../types';
+import { Member, Installment, Language, PaymentAccountConfig } from '../types';
 import { translations } from '../data/translations';
 import { COMPANY_INFO } from '../data/initialData';
+import { INITIAL_PAYMENT_ACCOUNTS } from '../data/paymentAccounts';
+import { calculateInstallmentFine } from '../utils/fineCalculator';
 import { 
   Send, CreditCard, Building2, CheckCircle2, Clock, 
   Timer, Calendar, Lock, AlertCircle, ShieldCheck, 
-  FileText, ArrowRight, Wallet, Sparkles, Info
+  FileText, ArrowRight, Wallet, Sparkles, Info, Smartphone
 } from 'lucide-react';
 
 interface Props {
@@ -14,6 +16,7 @@ interface Props {
   onSubmitInstallment: (installment: Partial<Installment>) => void;
   onViewReceipt: (inst: Installment) => void;
   onNavigateToDashboard: () => void;
+  paymentAccounts?: PaymentAccountConfig[];
 }
 
 export const MemberDepositView: React.FC<Props> = ({
@@ -21,9 +24,15 @@ export const MemberDepositView: React.FC<Props> = ({
   lang,
   onSubmitInstallment,
   onViewReceipt,
-  onNavigateToDashboard
+  onNavigateToDashboard,
+  paymentAccounts = []
 }) => {
   const t = translations[lang];
+
+  // Active payment accounts list
+  const activeAccounts = paymentAccounts.length > 0 
+    ? paymentAccounts.filter(a => a.isActive)
+    : INITIAL_PAYMENT_ACCOUNTS.filter(a => a.isActive);
 
   // Default month and today's real-time date
   const now = new Date();
@@ -38,11 +47,21 @@ export const MemberDepositView: React.FC<Props> = ({
   const [month, setMonth] = useState(currentMonthName);
   const [year, setYear] = useState(now.getFullYear() || 2026);
   const paymentDate = todayStr; // Strictly locked to real-time system date
-  const [method, setMethod] = useState('bKash Merchant');
+  const defaultMethod = activeAccounts[0] 
+    ? (lang === 'bn' ? activeAccounts[0].titleBn : activeAccounts[0].titleEn) 
+    : 'bKash Merchant';
+  const [method, setMethod] = useState(defaultMethod);
   const [trxId, setTrxId] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedReceipt, setSubmittedReceipt] = useState<Installment | null>(null);
+
+  // Update default method if activeAccounts changes
+  useEffect(() => {
+    if (activeAccounts.length > 0 && !activeAccounts.some(a => (a.titleBn === method || a.titleEn === method))) {
+      setMethod(lang === 'bn' ? activeAccounts[0].titleBn : activeAccounts[0].titleEn);
+    }
+  }, [activeAccounts, lang]);
 
   // Live ticking clock & formatted live date
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
@@ -60,12 +79,11 @@ export const MemberDepositView: React.FC<Props> = ({
   // Base monthly installment (1% share = ৳1,000)
   const baseMonthlyAmount = (member.share || 1) * 1000;
 
-  // Penalty Calculation Rule:
-  // 1st to 10th of the month -> 0 BDT penalty.
-  // After 10th (11th to 31st) -> 100 BDT per share.
-  const submissionDay = now.getDate() || 1;
-  const isLate = submissionDay > 10;
-  const calculatedLateFee = isLate ? (member.share || 1) * 100 : 0;
+  // Accurate Late Fine Calculation (No fine on future or on-time installments)
+  const fineResult = calculateInstallmentFine(member.share || 1, month, year, now);
+  const calculatedLateFee = fineResult.lateFee;
+  const isLate = fineResult.isLate;
+  const isFuture = fineResult.isFuture;
   const totalPayableAmount = baseMonthlyAmount + calculatedLateFee;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -200,38 +218,66 @@ export const MemberDepositView: React.FC<Props> = ({
 
       {/* OFFICIAL PAYMENT CHANNELS CARD */}
       <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-        <div className="flex items-center space-x-2 text-slate-300 text-xs font-bold uppercase tracking-wider">
-          <Building2 className="w-4 h-4 text-emerald-400" />
-          <span>{lang === 'bn' ? 'নেক্সোরা লিমিটেডের অফিসিয়াল পেমেন্ট চ্যানেলসমূহ' : 'Official Payment Channels for Installments'}</span>
+        <div className="flex items-center justify-between text-slate-300 text-xs font-bold uppercase tracking-wider">
+          <div className="flex items-center space-x-2">
+            <Building2 className="w-4 h-4 text-emerald-400" />
+            <span>{lang === 'bn' ? 'নেক্সোরা লিমিটেডের অফিসিয়াল পেমেন্ট চ্যানেলসমূহ' : 'Official Payment Channels for Installments'}</span>
+          </div>
+          <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            {activeAccounts.length} {lang === 'bn' ? 'টি সক্রিয় চ্যানেল' : 'Active Channels'}
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs text-slate-300">
-          <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-pink-400 font-bold">bKash Merchant</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20 font-semibold">Make Payment</span>
-            </div>
-            <p className="font-mono text-white text-sm font-bold">{COMPANY_INFO.bkashMerchant}</p>
-            <p className="text-[11px] text-slate-400 mt-1">কাউন্টার: 1 | রেফারেন্স: {member.id}</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs text-slate-300">
+          {activeAccounts.map((acc) => {
+            const isBkash = acc.type === 'bkash';
+            const isNagad = acc.type === 'nagad';
+            const isRocket = acc.type === 'rocket';
+            const isBank = acc.type === 'bank';
 
-          <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-orange-400 font-bold">Nagad Merchant</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 font-semibold">Merchant Pay</span>
-            </div>
-            <p className="font-mono text-white text-sm font-bold">{COMPANY_INFO.nagadMerchant}</p>
-            <p className="text-[11px] text-slate-400 mt-1">কাউন্টার: 1 | রেফারেন্স: {member.id}</p>
-          </div>
+            const badgeColor = isBkash 
+              ? 'text-pink-400 bg-pink-500/10 border-pink-500/20' 
+              : isNagad 
+              ? 'text-orange-400 bg-orange-500/10 border-orange-500/20'
+              : isRocket
+              ? 'text-purple-400 bg-purple-500/10 border-purple-500/20'
+              : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
 
-          <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-emerald-400 font-bold">Islami Bank Direct</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">Banani Branch</span>
-            </div>
-            <p className="font-mono text-white text-sm font-bold">A/C: 2050392019482</p>
-            <p className="text-[11px] text-slate-400 mt-1">হিসাবের নাম: NEXORA LIMITED</p>
-          </div>
+            const titleColor = isBkash ? 'text-pink-400' : isNagad ? 'text-orange-400' : isRocket ? 'text-purple-400' : 'text-emerald-400';
+
+            return (
+              <div key={acc.id} className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-2.5 hover:border-slate-700 transition">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`font-bold ${titleColor} flex items-center gap-1.5`}>
+                      {isBank ? <Building2 className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
+                      <span>{lang === 'bn' ? acc.titleBn : acc.titleEn}</span>
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${badgeColor}`}>
+                      {acc.accountTypeBn || acc.accountTypeEn || 'Official'}
+                    </span>
+                  </div>
+                  <p className="font-mono text-white text-sm font-bold tracking-wide">
+                    {acc.accountNumber}
+                  </p>
+                  {(acc.bankNameBn || acc.branchBn) && (
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {acc.bankNameBn} {acc.branchBn ? `(${acc.branchBn})` : ''}
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-slate-900 text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>{lang === 'bn' ? 'রেফারেন্স:' : 'Ref:'} <strong className="text-emerald-400 font-mono">{member.id}</strong></span>
+                  {acc.instructionsBn && (
+                    <span className="text-[10px] text-slate-500 truncate max-w-[120px]" title={acc.instructionsBn}>
+                      {acc.instructionsBn}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -251,20 +297,32 @@ export const MemberDepositView: React.FC<Props> = ({
 
         {/* 1st to 10th Penalty Rule Live Indicator Box */}
         <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-          !isLate 
+          isFuture
+            ? 'bg-sky-500/10 border-sky-500/30 text-sky-300'
+            : !isLate 
             ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
             : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
         }`}>
           <div className="flex items-center gap-2.5 text-xs sm:text-sm">
-            {isLate ? <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
+            {isFuture ? (
+              <Sparkles className="w-5 h-5 text-sky-400 shrink-0" />
+            ) : isLate ? (
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            )}
             <div>
               <p className="font-bold">
-                {!isLate 
+                {isFuture
+                  ? (lang === 'bn' ? 'ভবিষ্যতের কিস্তি (অগ্রিম পরিশোধ)' : 'Upcoming / Advance Installment')
+                  : !isLate 
                   ? (lang === 'bn' ? 'সময়মতো পরিশোধ (১ম থেকে ১০ই তারিখ)' : 'On-Time Submission (1st - 10th of Month)')
                   : (lang === 'bn' ? '১০ তারিখের পরবর্তী জমা (বিলম্ব ফি প্রযোজ্য)' : 'Late Submission (After 10th of Month)')}
               </p>
               <p className="text-xs text-slate-300 mt-0.5">
-                {!isLate 
+                {isFuture
+                  ? (lang === 'bn' ? 'ভবিষ্যত মাসের কিস্তির ক্ষেত্রে কোনো বিলম্ব জরিমানা প্রযোজ্য নয় (বিলম্ব ফি: ৳০)।' : 'No late fee applies to advance / future installments (Late Fee: ৳0).')
+                  : !isLate 
                   ? (lang === 'bn' ? '১ থেকে ১০ তারিখের মধ্যে জমা দিলে কোনো বিলম্ব ফি নেই (বিলম্ব ফি: ৳০)।' : 'Installments submitted on or before 10th have strictly 0 BDT late fee.')
                   : (lang === 'bn' ? `১০ তারিখ অতিক্রম করায় শেয়ার প্রতি ৳১০০ হারে মোট ৳${calculatedLateFee.toLocaleString()} বিলম্ব ফি যোগ হয়েছে।` : `Submission after 10th incurs 100 BDT per share penalty (Late Fee: ৳${calculatedLateFee.toLocaleString()}).`)}
               </p>
@@ -275,7 +333,7 @@ export const MemberDepositView: React.FC<Props> = ({
             <span className="text-[10px] text-slate-400 block uppercase font-semibold">
               {lang === 'bn' ? 'বিলম্ব ফি' : 'Late Fee'}
             </span>
-            <span className={`text-lg font-black font-mono ${!isLate ? 'text-emerald-400' : 'text-amber-400'}`}>
+            <span className={`text-lg font-black font-mono ${isFuture ? 'text-sky-400' : !isLate ? 'text-emerald-400' : 'text-amber-400'}`}>
               ৳ {calculatedLateFee.toLocaleString()}
             </span>
           </div>
@@ -336,7 +394,7 @@ export const MemberDepositView: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Payment Method */}
+            {/* Dynamic Payment Method Selection */}
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1.5">{t.selectMethod} *</label>
               <select
@@ -344,11 +402,15 @@ export const MemberDepositView: React.FC<Props> = ({
                 onChange={(e) => setMethod(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs sm:text-sm text-white focus:border-emerald-500 focus:outline-none"
               >
-                <option value="bKash Merchant">bKash Merchant</option>
-                <option value="Nagad Merchant">Nagad Merchant</option>
-                <option value="Islami Bank Direct">Islami Bank Direct</option>
-                <option value="Bank Transfer (BEFTN/NPSB)">Bank Transfer (BEFTN/NPSB)</option>
-                <option value="Cash at Head Office">Cash at Head Office</option>
+                {activeAccounts.map((acc) => {
+                  const label = lang === 'bn' ? acc.titleBn : acc.titleEn;
+                  return (
+                    <option key={acc.id} value={label}>
+                      {label} ({acc.accountNumber})
+                    </option>
+                  );
+                })}
+                <option value="Cash at Head Office">{lang === 'bn' ? 'ক্যাশ (প্রধান কার্যালয়)' : 'Cash at Head Office'}</option>
               </select>
             </div>
 

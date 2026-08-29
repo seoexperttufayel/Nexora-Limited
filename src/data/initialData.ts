@@ -434,3 +434,49 @@ export const COMPANY_INFO = {
   bkashMerchant: '01711-000000 (Merchant)',
   nagadMerchant: '01811-000000 (Merchant)'
 };
+
+export const INITIAL_PAYMENT_ACCOUNTS: import('../types').PaymentAccountConfig[] = [
+  {
+    id: 'pay-bkash',
+    titleEn: 'bKash Merchant',
+    titleBn: 'বিকাশ মার্চেন্ট',
+    type: 'bkash',
+    accountTypeEn: 'Merchant Account (Make Payment)',
+    accountTypeBn: 'মার্চেন্ট অ্যাকাউন্ট (পেমেন্ট করুন)',
+    accountNumber: '01711-000000',
+    instructionsEn: 'Go to bKash App -> Make Payment -> Enter Merchant Number: 01711-000000 -> Counter: 1 -> Reference: Member ID (e.g. NXR-001)',
+    instructionsBn: 'বিকাশ অ্যাপে যান -> পেমেন্ট অপশন নির্বাচন করুন -> মার্চেন্ট নম্বর: 01711-000000 দিন -> কাউন্টার: 1 -> রেফারেন্স: আপনার মেম্বার আইডি (যেমন: NXR-001)',
+    isActive: true
+  },
+  {
+    id: 'pay-nagad',
+    titleEn: 'Nagad Merchant',
+    titleBn: 'নগদ মার্চেন্ট',
+    type: 'nagad',
+    accountTypeEn: 'Merchant Pay',
+    accountTypeBn: 'মার্চেন্ট পে',
+    accountNumber: '01811-000000',
+    instructionsEn: 'Go to Nagad App -> Merchant Pay -> Enter 01811-000000 -> Counter: 1 -> Reference: Member ID',
+    instructionsBn: 'নগদ অ্যাপে যান -> মার্চেন্ট পে নির্বাচন করুন -> নম্বর: 01811-000000 দিন -> কাউন্টার: 1 -> রেফারেন্স: মেম্বার আইডি',
+    isActive: true
+  },
+  {
+    id: 'pay-bank-ibbl',
+    titleEn: 'Islami Bank Bangladesh PLC',
+    titleBn: 'ইসলামী ব্যাংক বাংলাদেশ পিএলসি',
+    type: 'bank',
+    accountTypeEn: 'Corporate Current Account',
+    accountTypeBn: 'করপোরেট চলতি হিসাব',
+    accountNumber: '2050392019482',
+    accountNameEn: 'NEXORA LIMITED',
+    accountNameBn: 'নেক্সোরা লিমিটেড',
+    bankNameEn: 'Islami Bank Bangladesh PLC',
+    bankNameBn: 'ইসলামী ব্যাংক বাংলাদেশ পিএলসি',
+    branchEn: 'Banani Branch, Dhaka',
+    branchBn: 'বনানী শাখা, ঢাকা',
+    routingNumber: '125261458',
+    instructionsEn: 'Transfer via BEFTN/NPSB/iBanking or deposit cash at any branch. Put Member ID in transaction remarks.',
+    instructionsBn: 'বিইএফটিএন, এনপিএসবি অথবা যেকোনো শাখা থেকে জমা দিন। রিমার্কসে মেম্বার আইডি লিখুন।',
+    isActive: true
+  }
+];

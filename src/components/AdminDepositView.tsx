@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Member, Installment, Language } from '../types';
+import { Member, Installment, Language, PaymentAccountConfig } from '../types';
 import { translations } from '../data/translations';
 import { COMPANY_INFO } from '../data/initialData';
+import { INITIAL_PAYMENT_ACCOUNTS } from '../data/paymentAccounts';
 import { 
   Building2, Wallet, CheckCircle2, Clock, 
   Send, CreditCard, ShieldCheck, Timer, 
@@ -18,6 +19,7 @@ interface Props {
   onRestoreInstallment?: (id: string) => void;
   onPermanentDeleteInstallment?: (id: string) => void;
   onViewReceipt: (inst: Installment) => void;
+  paymentAccounts?: PaymentAccountConfig[];
 }
 
 export const AdminDepositView: React.FC<Props> = ({
@@ -28,16 +30,32 @@ export const AdminDepositView: React.FC<Props> = ({
   onDeleteInstallment,
   onRestoreInstallment,
   onPermanentDeleteInstallment,
-  onViewReceipt
+  onViewReceipt,
+  paymentAccounts = []
 }) => {
   const t = translations[lang];
+
+  // Active payment channels
+  const activeAccounts = paymentAccounts.length > 0 
+    ? paymentAccounts.filter(a => a.isActive)
+    : INITIAL_PAYMENT_ACCOUNTS.filter(a => a.isActive);
 
   // Form State
   const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id || 'NXR-001');
   const [month, setMonth] = useState('September');
   const [year, setYear] = useState(2026);
-  const [method, setMethod] = useState('Islami Bank Direct');
+  const defaultMethod = activeAccounts[0]
+    ? (lang === 'bn' ? activeAccounts[0].titleBn : activeAccounts[0].titleEn)
+    : 'Islami Bank Direct';
+  const [method, setMethod] = useState(defaultMethod);
   const [trxId, setTrxId] = useState('');
+
+  // Update default method if activeAccounts changes
+  useEffect(() => {
+    if (activeAccounts.length > 0 && !activeAccounts.some(a => (a.titleBn === method || a.titleEn === method))) {
+      setMethod(lang === 'bn' ? activeAccounts[0].titleBn : activeAccounts[0].titleEn);
+    }
+  }, [activeAccounts, lang]);
   const [lateFee, setLateFee] = useState<number>(0);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -362,10 +380,15 @@ export const AdminDepositView: React.FC<Props> = ({
                 onChange={(e) => setMethod(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-emerald-500"
               >
-                <option value="Islami Bank Direct">Islami Bank Direct (A/C: 2050392019482)</option>
+                {activeAccounts.map((acc) => {
+                  const label = lang === 'bn' ? acc.titleBn : acc.titleEn;
+                  return (
+                    <option key={acc.id} value={label}>
+                      {label} ({acc.accountNumber})
+                    </option>
+                  );
+                })}
                 <option value="Bank Transfer (BEFTN/NPSB)">Bank Transfer (BEFTN/NPSB)</option>
-                <option value="bKash Merchant">bKash Merchant (01711-000000)</option>
-                <option value="Nagad Merchant">Nagad Merchant (01811-000000)</option>
                 <option value="Cash at Head Office">Cash at Head Office (Banani)</option>
               </select>
             </div>

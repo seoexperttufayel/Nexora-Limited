@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Language, Role, Member, Installment, Project, Notice } from './types';
+import { Language, Role, Member, Installment, Project, Notice, LedgerTransaction, PaymentAccountConfig } from './types';
 import { FOUNDER_MEMBERS, INITIAL_INSTALLMENTS, PROJECTS, NOTICES, COMPANY_INFO } from './data/initialData';
+import { INITIAL_LEDGER_TRANSACTIONS } from './data/initialLedger';
+import { INITIAL_PAYMENT_ACCOUNTS } from './data/paymentAccounts';
 import { translations } from './data/translations';
 import { 
   subscribeToInstallments, 
@@ -8,7 +10,11 @@ import {
   saveInstallmentToCloud,
   approveInstallmentInCloud,
   rejectInstallmentInCloud,
-  updateInstallmentDeletionInCloud
+  updateInstallmentDeletionInCloud,
+  subscribeToPaymentAccounts,
+  seedInitialPaymentAccountsIfEmpty,
+  savePaymentAccountToCloud,
+  deletePaymentAccountInCloud
 } from './services/firebase';
 
 // Components
@@ -21,6 +27,7 @@ import { MemberDashboard } from './components/MemberDashboard';
 import { MemberDepositView } from './components/MemberDepositView';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminDepositView } from './components/AdminDepositView';
+import { FinancialLedgerView } from './components/FinancialLedgerView';
 import { InstallmentsView } from './components/InstallmentsView';
 import { LoginModal } from './components/LoginModal';
 import { MoneyReceiptModal } from './components/MoneyReceiptModal';
@@ -118,15 +125,44 @@ export default function App() {
     return NOTICES;
   });
 
+  // Corporate Financial Ledger Transactions State
+  const [ledgerTransactions, setLedgerTransactions] = useState<LedgerTransaction[]>(() => {
+    const saved = localStorage.getItem('nxr_ledger_transactions_v2');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // fallback
+      }
+    }
+    return INITIAL_LEDGER_TRANSACTIONS;
+  });
+
+  // Payment Channels / Gateway Configurations State
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccountConfig[]>(() => {
+    const saved = localStorage.getItem('nxr_payment_accounts_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // fallback
+      }
+    }
+    return INITIAL_PAYMENT_ACCOUNTS;
+  });
+
   // 4. Firestore Real-Time Cross-Device Synchronization
   const [isCloudSynced, setIsCloudSynced] = useState(true);
 
   useEffect(() => {
     // Seed default installments if Firestore is empty on first run
     seedInitialInstallmentsIfEmpty(INITIAL_INSTALLMENTS);
+    seedInitialPaymentAccountsIfEmpty(INITIAL_PAYMENT_ACCOUNTS);
 
     // Subscribe to real-time installment updates across all devices
-    const unsubscribe = subscribeToInstallments(
+    const unsubscribeInstallments = subscribeToInstallments(
       (cloudInstallments) => {
         if (cloudInstallments && cloudInstallments.length > 0) {
           setInstallments(cloudInstallments);
@@ -134,13 +170,26 @@ export default function App() {
         }
       },
       (error) => {
-        console.warn('Firestore subscription status:', error);
+        console.warn('Firestore installments subscription status:', error);
         setIsCloudSynced(false);
       }
     );
 
+    // Subscribe to real-time payment account updates across all devices
+    const unsubscribePayments = subscribeToPaymentAccounts(
+      (cloudAccounts) => {
+        if (cloudAccounts && cloudAccounts.length > 0) {
+          setPaymentAccounts(cloudAccounts);
+        }
+      },
+      (error) => {
+        console.warn('Firestore payment accounts subscription status:', error);
+      }
+    );
+
     return () => {
-      unsubscribe();
+      unsubscribeInstallments();
+      unsubscribePayments();
     };
   }, []);
 
@@ -182,6 +231,62 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('nxr_notices_v1', JSON.stringify(notices));
   }, [notices]);
+
+  useEffect(() => {
+    localStorage.setItem('nxr_ledger_transactions_v2', JSON.stringify(ledgerTransactions));
+  }, [ledgerTransactions]);
+
+  useEffect(() => {
+    localStorage.setItem('nxr_payment_accounts_v1', JSON.stringify(paymentAccounts));
+  }, [paymentAccounts]);
+
+  // Ledger Handlers
+  const handleAddLedgerTransaction = (newTxn: LedgerTransaction) => {
+    setLedgerTransactions(prev => [newTxn, ...prev]);
+  };
+
+  const handleDeleteLedgerTransaction = (id: string) => {
+    setLedgerTransactions(prev =>
+      prev.map(t => (t.id === id ? { ...t, isDeleted: true } : t))
+    );
+  };
+
+  // Payment Account Handlers (Local & Firestore Cloud Synced)
+  const handleUpdatePaymentAccount = async (updated: PaymentAccountConfig) => {
+    setPaymentAccounts(prev =>
+      prev.map(acc => (acc.id === updated.id ? updated : acc))
+    );
+    try {
+      await savePaymentAccountToCloud(updated);
+    } catch (err) {
+      console.error('Cloud payment account save error:', err);
+    }
+  };
+
+  const handleAddPaymentAccount = async (newAcc: PaymentAccountConfig) => {
+    setPaymentAccounts(prev => [...prev, newAcc]);
+    try {
+      await savePaymentAccountToCloud(newAcc);
+    } catch (err) {
+      console.error('Cloud payment account add error:', err);
+    }
+  };
+
+  const handleDeletePaymentAccount = async (id: string) => {
+    setPaymentAccounts(prev => prev.filter(acc => acc.id !== id));
+    try {
+      await deletePaymentAccountInCloud(id);
+    } catch (err) {
+      console.error('Cloud payment account delete error:', err);
+    }
+  };
+
+  const handleResetPaymentAccounts = async () => {
+    setPaymentAccounts(INITIAL_PAYMENT_ACCOUNTS);
+    for (const acc of INITIAL_PAYMENT_ACCOUNTS) {
+      await savePaymentAccountToCloud(acc);
+    }
+  };
 
   // Notice Handlers
   const handleAddNotice = (newNotice: Notice) => {
@@ -257,21 +362,49 @@ export default function App() {
     }
   };
 
-  // Admin Approve Installment (Real-time Cloud Broadcast)
+  // Admin Approve Installment (Real-time Cloud Broadcast & Auto-link to Ledger)
   const handleApproveInstallment = async (id: string) => {
+    let approvedInst: Installment | undefined;
     setInstallments(prev =>
       prev.map(item => {
         if (item.id === id) {
-          return {
+          approvedInst = {
             ...item,
             status: 'approved' as const,
             approvedBy: 'Super Admin',
             approvedAt: new Date().toISOString()
           };
+          return approvedInst;
         }
         return item;
       })
     );
+
+    // Auto-record approved installment in Corporate Financial Ledger
+    const target = approvedInst || installments.find(i => i.id === id);
+    if (target) {
+      const ledgerEntry: LedgerTransaction = {
+        id: `LED-${target.id}`,
+        voucherNo: target.receiptNo,
+        type: 'credit',
+        title: `Member Installment: ${target.memberName} (${target.month} ${target.year})`,
+        titleBn: `সদস্য কিস্তি জমা: ${target.memberNameBn || target.memberName} (${target.month} ${target.year})`,
+        category: 'Monthly Installments (মাসিক কিস্তি)',
+        categoryBn: 'মাসিক কিস্তি',
+        amount: target.amount,
+        date: target.date,
+        method: target.method,
+        notes: `সদস্য আইডি: ${target.memberId} | TrxID: ${target.trxId}`,
+        recordedBy: 'Super Admin',
+        createdAt: new Date().toISOString()
+      };
+      setLedgerTransactions(prev => {
+        if (prev.some(t => t.voucherNo === target.receiptNo || t.id === ledgerEntry.id)) {
+          return prev;
+        }
+        return [ledgerEntry, ...prev];
+      });
+    }
 
     try {
       await approveInstallmentInCloud(id, 'Super Admin');
@@ -296,6 +429,9 @@ export default function App() {
       })
     );
 
+    // Remove from ledger if rejected
+    setLedgerTransactions(prev => prev.filter(t => t.id !== `LED-${id}`));
+
     try {
       await rejectInstallmentInCloud(id, finalReason);
     } catch (err) {
@@ -303,7 +439,7 @@ export default function App() {
     }
   };
 
-  // Direct Admin Installment Add (Real-time Cloud Broadcast)
+  // Direct Admin Installment Add (Real-time Cloud Broadcast & Auto-link to Ledger)
   const handleAddDirectInstallment = async (data: Partial<Installment>) => {
     const receiptSerial = `NXR-DIR-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
     const newInst: Installment = {
@@ -328,6 +464,24 @@ export default function App() {
 
     setInstallments(prev => [newInst, ...prev]);
 
+    // Auto-record direct approved installment in Corporate Financial Ledger
+    const ledgerEntry: LedgerTransaction = {
+      id: `LED-${newInst.id}`,
+      voucherNo: newInst.receiptNo,
+      type: 'credit',
+      title: `Member Installment: ${newInst.memberName} (${newInst.month} ${newInst.year})`,
+      titleBn: `সদস্য কিস্তি জমা: ${newInst.memberNameBn || newInst.memberName} (${newInst.month} ${newInst.year})`,
+      category: 'Monthly Installments (মাসিক কিস্তি)',
+      categoryBn: 'মাসিক কিস্তি',
+      amount: newInst.amount,
+      date: newInst.date,
+      method: newInst.method,
+      notes: `সদস্য আইডি: ${newInst.memberId} | TrxID: ${newInst.trxId}`,
+      recordedBy: 'Super Admin',
+      createdAt: new Date().toISOString()
+    };
+    setLedgerTransactions(prev => [ledgerEntry, ...prev]);
+
     try {
       await saveInstallmentToCloud(newInst);
     } catch (err) {
@@ -349,6 +503,11 @@ export default function App() {
         }
         return item;
       })
+    );
+
+    // Sync soft delete in ledger
+    setLedgerTransactions(prev =>
+      prev.map(t => (t.id === `LED-${id}` ? { ...t, isDeleted: true } : t))
     );
 
     try {
@@ -373,6 +532,11 @@ export default function App() {
       })
     );
 
+    // Restore in ledger
+    setLedgerTransactions(prev =>
+      prev.map(t => (t.id === `LED-${id}` ? { ...t, isDeleted: false } : t))
+    );
+
     try {
       await updateInstallmentDeletionInCloud(id, false);
     } catch (err) {
@@ -382,6 +546,7 @@ export default function App() {
 
   const handlePermanentDeleteInstallment = (id: string) => {
     setInstallments(prev => prev.filter(item => item.id !== id));
+    setLedgerTransactions(prev => prev.filter(t => t.id !== `LED-${id}`));
   };
 
   // Member Management Handlers
@@ -536,6 +701,7 @@ export default function App() {
               onSubmitInstallment={handleSubmitInstallment}
               onViewReceipt={(inst) => setSelectedReceipt(inst)}
               onNavigateToDashboard={() => setActiveTab('member-dashboard')}
+              paymentAccounts={paymentAccounts}
             />
           )}
 
@@ -548,6 +714,25 @@ export default function App() {
               onApprove={handleApproveInstallment}
               onReject={handleRejectInstallment}
               onViewReceipt={(inst) => setSelectedReceipt(inst)}
+              ledgerTransactions={ledgerTransactions}
+              paymentAccounts={paymentAccounts}
+              onUpdatePaymentAccount={handleUpdatePaymentAccount}
+              onAddPaymentAccount={handleAddPaymentAccount}
+              onDeletePaymentAccount={handleDeletePaymentAccount}
+              onResetPaymentAccounts={handleResetPaymentAccounts}
+              onNavigateToLedger={() => setActiveTab('financial-ledger')}
+            />
+          )}
+
+          {/* Corporate Financial Ledger (Horizontal Header Menu View) */}
+          {activeTab === 'financial-ledger' && (
+            <FinancialLedgerView
+              transactions={ledgerTransactions}
+              lang={lang}
+              role={role}
+              onAddTransaction={handleAddLedgerTransaction}
+              onDeleteTransaction={handleDeleteLedgerTransaction}
+              totalApprovedInstallments={installments.filter(i => !i.isDeleted && i.status === 'approved').reduce((sum, i) => sum + i.amount, 0)}
             />
           )}
 
@@ -562,6 +747,7 @@ export default function App() {
               onDeleteInstallment={handleDeleteInstallment}
               onRestoreInstallment={handleRestoreInstallment}
               onPermanentDeleteInstallment={handlePermanentDeleteInstallment}
+              paymentAccounts={paymentAccounts}
             />
           )}
 

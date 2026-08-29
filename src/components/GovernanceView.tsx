@@ -4,7 +4,7 @@ import {
   Search, UserCheck, Shield, Phone, Mail, CheckCircle2, 
   ChevronRight, Globe, MapPin, Building, Edit3, Trash2, 
   UserPlus, RotateCcw, ShieldAlert, AlertTriangle, Check, X,
-  Users
+  Users, KeyRound, Upload, Image as ImageIcon, CreditCard
 } from 'lucide-react';
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
   onPermanentDeleteMember?: (memberId: string) => void;
   onAddMember?: (newMember: Member) => void;
   onRestoreDefaultMembers?: () => void;
+  onResetMemberPassword?: (memberId: string, newPass: string) => void;
 }
 
 export const GovernanceView: React.FC<Props> = ({ 
@@ -28,7 +29,8 @@ export const GovernanceView: React.FC<Props> = ({
   onRestoreMember,
   onPermanentDeleteMember,
   onAddMember,
-  onRestoreDefaultMembers
+  onRestoreDefaultMembers,
+  onResetMemberPassword
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGroup, setFilterGroup] = useState<'all' | 'management' | 'advisor'>('all');
@@ -39,6 +41,11 @@ export const GovernanceView: React.FC<Props> = ({
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [memberToPurge, setMemberToPurge] = useState<Member | null>(null);
+
+  // Member Password Reset State
+  const [passwordResetMember, setPasswordResetMember] = useState<Member | null>(null);
+  const [newMemberPassword, setNewMemberPassword] = useState('Nexora@2026');
+  const [resetSuccessMessage, setResetSuccessMessage] = useState('');
 
   // Helper for strictly sequential sorting by Member ID: NXR-001 -> NXR-002 -> ... -> NXR-013
   const sortMembersById = (a: Member, b: Member) => {
@@ -59,7 +66,9 @@ export const GovernanceView: React.FC<Props> = ({
     locationBn: 'সিলেট, বাংলাদেশ',
     share: 3,
     phone: '01700-000000',
-    email: 'member@nexora.com.bd'
+    email: 'member@nexora.com.bd',
+    nid: '19901234567890',
+    avatarUrl: ''
   });
 
   const activeMembers = [...members.filter(m => !m.isDeleted)].sort(sortMembersById);
@@ -74,6 +83,8 @@ export const GovernanceView: React.FC<Props> = ({
       m.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.designationEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.designationBn.includes(searchTerm) ||
+      (m.nid && m.nid.includes(searchTerm)) ||
+      (m.email && m.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (m.locationBn && m.locationBn.includes(searchTerm)) ||
       (m.locationEn && m.locationEn.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -92,6 +103,23 @@ export const GovernanceView: React.FC<Props> = ({
   const advisorList = filteredMembers.filter(m => (m.committeeGroup === 'advisor' || ['NXR-001', 'NXR-002', 'NXR-003', 'NXR-005', 'NXR-009'].includes(m.id))).sort(sortMembersById);
 
   const totalActiveShares = activeMembers.reduce((acc, curr) => acc + curr.share, 0);
+
+  // File upload handler for profile picture
+  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>, isNew: boolean = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      if (isNew) {
+        setNewMemberForm(prev => ({ ...prev, avatarUrl: base64String }));
+      } else if (editingMember) {
+        setEditingMember(prev => prev ? { ...prev, avatarUrl: base64String } : null);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Save Member Edit Handler
   const handleSaveMemberEdit = (e: React.FormEvent) => {
@@ -117,6 +145,8 @@ export const GovernanceView: React.FC<Props> = ({
       share: Number(newMemberForm.share) || 3,
       phone: newMemberForm.phone || '01700-000000',
       email: newMemberForm.email || 'member@nexora.com.bd',
+      nid: newMemberForm.nid || '',
+      avatarUrl: newMemberForm.avatarUrl || '',
       addressEn: newMemberForm.locationEn || 'Sylhet, Bangladesh',
       addressBn: newMemberForm.locationBn || 'সিলেট, বাংলাদেশ',
       joinedDate: '2026-01-01'
@@ -134,8 +164,38 @@ export const GovernanceView: React.FC<Props> = ({
       locationBn: 'সিলেট, বাংলাদেশ',
       share: 3,
       phone: '01700-000000',
-      email: 'member@nexora.com.bd'
+      email: 'member@nexora.com.bd',
+      nid: '',
+      avatarUrl: ''
     });
+  };
+
+  // Handle Member Password Reset by Admin
+  const handleConfirmPasswordReset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordResetMember || !newMemberPassword.trim()) return;
+
+    // Store in localStorage password registry
+    const storedPasswords = JSON.parse(localStorage.getItem('nxr_user_passwords') || '{}');
+    storedPasswords[passwordResetMember.id] = newMemberPassword.trim();
+    storedPasswords[passwordResetMember.id.toLowerCase()] = newMemberPassword.trim();
+    storedPasswords[passwordResetMember.id.toUpperCase()] = newMemberPassword.trim();
+    localStorage.setItem('nxr_user_passwords', JSON.stringify(storedPasswords));
+
+    if (onResetMemberPassword) {
+      onResetMemberPassword(passwordResetMember.id, newMemberPassword.trim());
+    }
+
+    setResetSuccessMessage(
+      lang === 'bn' 
+        ? `${passwordResetMember.id} (${passwordResetMember.nameBn})-এর নতুন পাসওয়ার্ড সফলভাবে সেট করা হয়েছে: "${newMemberPassword}"` 
+        : `Password for ${passwordResetMember.id} has been reset to: "${newMemberPassword}"`
+    );
+
+    setTimeout(() => {
+      setResetSuccessMessage('');
+      setPasswordResetMember(null);
+    }, 2500);
   };
 
   // Reusable Member Card Component
@@ -152,9 +212,18 @@ export const GovernanceView: React.FC<Props> = ({
 
       <div className="space-y-2.5">
         <div className="flex items-start space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-emerald-400 text-xs font-mono group-hover:border-emerald-500/50 transition shrink-0">
-            {member.id}
-          </div>
+          {member.avatarUrl ? (
+            <img
+              src={member.avatarUrl}
+              alt={member.name}
+              className="w-11 h-11 rounded-xl object-cover border border-emerald-500/40 shadow-sm shrink-0"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-emerald-400 text-xs font-mono group-hover:border-emerald-500/50 transition shrink-0">
+              {member.id}
+            </div>
+          )}
           <div className="pr-12">
             <h3 className="text-sm font-bold text-white group-hover:text-emerald-400 transition leading-snug">
               {lang === 'bn' ? member.nameBn : member.name}
@@ -168,16 +237,30 @@ export const GovernanceView: React.FC<Props> = ({
         <div className="pt-2.5 border-t border-slate-800/80 space-y-1.5 text-xs text-slate-400">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1 text-[11px] text-slate-400">
-              <MapPin className="w-3 h-3 text-emerald-400" />
+              <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
               <span>{lang === 'bn' ? (member.locationBn || 'বাংলাদেশ') : (member.locationEn || 'Bangladesh')}</span>
             </span>
             <span className="font-mono font-semibold text-white">৳{(member.share * 1000).toLocaleString()}/mo</span>
           </div>
 
-          <div className="flex items-center space-x-2 text-[11px] text-slate-500 pt-0.5">
-            <Phone className="w-3 h-3 text-slate-400" />
+          <div className="flex items-center space-x-2 text-[11px] text-slate-400 pt-0.5">
+            <Phone className="w-3 h-3 text-slate-500 shrink-0" />
             <span className="font-mono">{member.phone}</span>
           </div>
+
+          {member.email && (
+            <div className="flex items-center space-x-2 text-[11px] text-slate-400 truncate">
+              <Mail className="w-3 h-3 text-slate-500 shrink-0" />
+              <span className="truncate">{member.email}</span>
+            </div>
+          )}
+
+          {member.nid && (
+            <div className="flex items-center space-x-2 text-[11px] text-slate-400 font-mono">
+              <CreditCard className="w-3 h-3 text-emerald-500/70 shrink-0" />
+              <span className="text-emerald-400/90 font-medium">NID: {member.nid}</span>
+            </div>
+          )}
 
           <div className="pt-1">
             <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium ${
@@ -205,6 +288,18 @@ export const GovernanceView: React.FC<Props> = ({
                 <span>{lang === 'bn' ? 'সম্পাদনা' : 'Edit'}</span>
               </button>
             )}
+
+            <button
+              onClick={() => {
+                setPasswordResetMember(member);
+                setNewMemberPassword('Nexora@2026');
+              }}
+              className="p-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs transition"
+              title="Reset Member Password / পাসওয়ার্ড রিসেট"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+            </button>
+
             {onDeleteMember && (
               <button
                 onClick={() => setMemberToDelete(member)}
@@ -291,8 +386,8 @@ export const GovernanceView: React.FC<Props> = ({
               </h3>
               <p className="text-xs text-slate-400">
                 {lang === 'bn' 
-                  ? 'সদস্যদের প্রোফাইল সম্পাদনা, শেয়ার পরিবর্তন বা নতুন অংশীদার যুক্ত করুন' 
-                  : 'Edit profiles, adjust equity allocations, and manage shareholder directory'}
+                  ? 'সদস্যদের NID, ইমেল ও ছবি সম্পাদনা, পাসওয়ার্ড রিসেট বা নতুন অংশীদার যুক্ত করুন' 
+                  : 'Edit shareholder NID, email, profile photos, reset member passwords & manage records'}
               </p>
             </div>
           </div>
@@ -348,7 +443,7 @@ export const GovernanceView: React.FC<Props> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={lang === 'bn' ? 'নাম, আইডি, পদবী বা অবস্থান দিয়ে খুঁজুন (যেমন: NXR-001)...' : 'Search by name, ID, designation, or location (e.g. NXR-001)...'}
+            placeholder={lang === 'bn' ? 'নাম, আইডি, NID, ইমেল বা অবস্থান দিয়ে খুঁজুন (যেমন: NXR-001)...' : 'Search by name, ID, NID, email, or location (e.g. NXR-001)...'}
             className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
           />
         </div>
@@ -387,58 +482,8 @@ export const GovernanceView: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* TRASH VIEW BANNER IF VIEWING TRASHED */}
-      {viewTrashed && (
-        <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/30 text-xs text-rose-300 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Trash2 className="w-4 h-4 text-rose-400" />
-            <span>{lang === 'bn' ? 'বর্তমানে মুছে ফেলা / ট্র্যাশকৃত সদস্যদের প্রোফাইল প্রদর্শন করা হচ্ছে।' : 'Currently displaying deleted shareholder profiles in Trash.'}</span>
-          </div>
-          <button
-            onClick={() => setViewTrashed(false)}
-            className="font-bold underline hover:text-white"
-          >
-            {lang === 'bn' ? 'সক্রিয় তালিকায় ফিরুন' : 'Back to Active'}
-          </button>
-        </div>
-      )}
-
-      {/* VIEW: ALL MEMBERS (SEQUENTIALLY SORTED NXR-001 TO NXR-013) */}
-      {filterGroup === 'all' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <Users className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">
-                  {lang === 'bn' ? 'সকল প্রতিষ্ঠাতা সদস্য ও অংশীদার তালিকা (NXR-001 থেকে NXR-013 ক্রমিক)' : 'All Founder Shareholders & Members (Sequential NXR-001 to NXR-013)'}
-                </h2>
-                <p className="text-xs text-slate-400">
-                  {lang === 'bn' ? 'সদস্য আইডি অনুযায়ী ক্রমানুসারে সাজানো সম্পূর্ণ ডিরেক্টরি' : 'Strictly sorted ascending by member identification code'}
-                </p>
-              </div>
-            </div>
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              {filteredMembers.length} Members
-            </span>
-          </div>
-
-          {filteredMembers.length === 0 ? (
-            <div className="p-10 text-center bg-slate-900 rounded-2xl border border-slate-800 text-slate-400">
-              <p>{lang === 'bn' ? 'কোনো সদস্য পাওয়া যায়নি।' : 'No members found matching your search.'}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {filteredMembers.map((member) => renderMemberCard(member))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* VIEW: MANAGEMENT COMMITTEE (দেশ - সিলেট, বাংলাদেশ) */}
-      {filterGroup === 'management' && managementList.length > 0 && (
+      {/* ALL MEMBERS / MANAGEMENT LIST */}
+      {filterGroup !== 'advisor' && managementList.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center space-x-2.5">
@@ -465,8 +510,8 @@ export const GovernanceView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* VIEW: ADVISORY COUNCIL (প্রবাসী ও বিশেষজ্ঞ পরিষদ) */}
-      {filterGroup === 'advisor' && advisorList.length > 0 && (
+      {/* ADVISORY COUNCIL */}
+      {filterGroup !== 'management' && advisorList.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center space-x-2.5">
@@ -493,10 +538,10 @@ export const GovernanceView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* EDIT MEMBER MODAL */}
+      {/* EDIT MEMBER PROFILE MODAL (WITH NID, EMAIL, & PHOTO UPLOAD) */}
       {editingMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 text-slate-100">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div className="flex items-center space-x-2">
                 <Edit3 className="w-5 h-5 text-amber-400" />
@@ -513,9 +558,55 @@ export const GovernanceView: React.FC<Props> = ({
             </div>
 
             <form onSubmit={handleSaveMemberEdit} className="space-y-4 text-xs sm:text-sm">
+              
+              {/* Profile Photo Upload / Avatar */}
+              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  {editingMember.avatarUrl ? (
+                    <img 
+                      src={editingMember.avatarUrl} 
+                      alt={editingMember.name} 
+                      className="w-12 h-12 rounded-xl object-cover border border-emerald-500/50 shadow-md"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center font-bold text-emerald-400 text-sm">
+                      {editingMember.name.charAt(0)}
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-semibold text-white block">{lang === 'bn' ? 'প্রোফাইল ছবি (Profile Picture)' : 'Profile Photo'}</span>
+                    <span className="text-[11px] text-slate-400">{lang === 'bn' ? 'ছবি আপলোড করুন বা লিংক দিন' : 'Upload photo or image file'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
+                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === 'bn' ? 'ছবি পরিবর্তন' : 'Upload Photo'}</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={(e) => handleAvatarFileUpload(e, false)} 
+                    />
+                  </label>
+                  {editingMember.avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingMember({...editingMember, avatarUrl: ''})}
+                      className="text-[11px] text-rose-400 hover:underline"
+                    >
+                      {lang === 'bn' ? 'মুছুন' : 'Remove'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Names */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Name (English)</label>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Name (English) *</label>
                   <input
                     type="text"
                     required
@@ -526,7 +617,7 @@ export const GovernanceView: React.FC<Props> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">নাম (বাংলায়)</label>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold">নাম (বাংলায়) *</label>
                   <input
                     type="text"
                     required
@@ -537,6 +628,7 @@ export const GovernanceView: React.FC<Props> = ({
                 </div>
               </div>
 
+              {/* Designation */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-400 text-xs mb-1 font-semibold">Designation (English)</label>
@@ -561,6 +653,7 @@ export const GovernanceView: React.FC<Props> = ({
                 </div>
               </div>
 
+              {/* Committee & Share */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-400 text-xs mb-1 font-semibold">Committee Group</label>
@@ -588,15 +681,48 @@ export const GovernanceView: React.FC<Props> = ({
                 </div>
               </div>
 
+              {/* Phone & NID Number (REQUESTED FIELD) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Phone Number</label>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold">
+                    {lang === 'bn' ? 'ফোন নম্বর (Phone Number) *' : 'Phone Number *'}
+                  </label>
                   <input
                     type="text"
                     required
                     value={editingMember.phone}
                     onChange={(e) => setEditingMember({...editingMember, phone: e.target.value})}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold text-emerald-400">
+                    {lang === 'bn' ? 'এনআইডি নম্বর (NID Number) *' : 'NID Number *'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="10 / 13 / 17 digit NID"
+                    value={editingMember.nid || ''}
+                    onChange={(e) => setEditingMember({...editingMember, nid: e.target.value})}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Email (REQUESTED FIELD) & Location */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold text-emerald-400">
+                    {lang === 'bn' ? 'ইমেল ঠিকানা (Email Address) *' : 'Email Address *'}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="shareholder@nexora.com.bd"
+                    value={editingMember.email || ''}
+                    onChange={(e) => setEditingMember({...editingMember, email: e.target.value})}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
 
@@ -632,10 +758,95 @@ export const GovernanceView: React.FC<Props> = ({
         </div>
       )}
 
+      {/* ADMIN RESET MEMBER PASSWORD MODAL */}
+      {passwordResetMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 my-8 text-slate-100 relative">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <KeyRound className="w-5 h-5 text-blue-400" />
+                <h3 className="text-base font-bold text-white">
+                  {lang === 'bn' ? `সদস্য পাসওয়ার্ড রিসেট: ${passwordResetMember.id}` : `Reset Password: ${passwordResetMember.id}`}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setPasswordResetMember(null)}
+                className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              {lang === 'bn' 
+                ? `সদস্য ${passwordResetMember.nameBn} (${passwordResetMember.id})-এর জন্য নতুন পাসওয়ার্ড নির্ধারণ করুন:` 
+                : `Set a new secure password for ${passwordResetMember.name} (${passwordResetMember.id}):`}
+            </p>
+
+            {resetSuccessMessage ? (
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{resetSuccessMessage}</span>
+              </div>
+            ) : (
+              <form onSubmit={handleConfirmPasswordReset} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold">
+                    {lang === 'bn' ? 'নতুন পাসওয়ার্ড (New Password)' : 'New Password'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newMemberPassword}
+                    onChange={(e) => setNewMemberPassword(e.target.value)}
+                    placeholder="e.g. Nexora@2026"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewMemberPassword('Nexora@2026')}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
+                  >
+                    Default (Nexora@2026)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewMemberPassword(`NXR${Math.floor(100000 + Math.random() * 900000)}`)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
+                  >
+                    Random PIN
+                  </button>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setPasswordResetMember(null)}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs"
+                  >
+                    {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs flex items-center gap-1"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? 'পাসওয়ার্ড সেভ করুন' : 'Confirm Reset'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ADD NEW MEMBER MODAL */}
       {showAddMemberModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 text-slate-100">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div className="flex items-center space-x-2">
                 <UserPlus className="w-5 h-5 text-emerald-400" />
@@ -652,7 +863,8 @@ export const GovernanceView: React.FC<Props> = ({
             </div>
 
             <form onSubmit={handleCreateMember} className="space-y-4 text-xs sm:text-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-400 text-xs mb-1 font-semibold">Member ID</label>
                   <input
@@ -660,74 +872,48 @@ export const GovernanceView: React.FC<Props> = ({
                     required
                     value={newMemberForm.id}
                     onChange={(e) => setNewMemberForm({...newMemberForm, id: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-emerald-400 font-mono font-bold focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-emerald-400 font-mono font-bold focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Name (English)</label>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Name (English) *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. John Doe"
                     value={newMemberForm.name}
                     onChange={(e) => setNewMemberForm({...newMemberForm, name: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">নাম (বাংলায়)</label>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold">নাম (বাংলায়) *</label>
                   <input
                     type="text"
                     required
                     placeholder="যেমন: মোঃ করিম"
                     value={newMemberForm.nameBn}
                     onChange={(e) => setNewMemberForm({...newMemberForm, nameBn: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Designation (English)</label>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Designation</label>
                   <input
                     type="text"
-                    required
-                    value={newMemberForm.designationEn}
-                    onChange={(e) => setNewMemberForm({...newMemberForm, designationEn: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">পদবী (বাংলায়)</label>
-                  <input
-                    type="text"
-                    required
                     value={newMemberForm.designationBn}
                     onChange={(e) => setNewMemberForm({...newMemberForm, designationBn: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Committee Allocation</label>
-                  <select
-                    value={newMemberForm.committeeGroup}
-                    onChange={(e) => setNewMemberForm({...newMemberForm, committeeGroup: e.target.value as any})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                  >
-                    <option value="management">ব্যবস্থাপনা কমিটি (সিলেট, বাংলাদেশ)</option>
-                    <option value="advisor">উপদেষ্টা পরিষদ (প্রবাসী ও আন্তর্জাতিক)</option>
-                  </select>
-                </div>
 
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Share Percentage (%)</label>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Equity Share (%)</label>
                   <input
                     type="number"
                     min="1"
@@ -735,12 +921,12 @@ export const GovernanceView: React.FC<Props> = ({
                     required
                     value={newMemberForm.share}
                     onChange={(e) => setNewMemberForm({...newMemberForm, share: Number(e.target.value)})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-400 text-xs mb-1 font-semibold">Phone Number</label>
                   <input
@@ -748,17 +934,27 @@ export const GovernanceView: React.FC<Props> = ({
                     required
                     value={newMemberForm.phone}
                     onChange={(e) => setNewMemberForm({...newMemberForm, phone: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1 font-semibold">Location / Country</label>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold text-emerald-400">NID Number</label>
                   <input
                     type="text"
-                    value={newMemberForm.locationEn}
-                    onChange={(e) => setNewMemberForm({...newMemberForm, locationEn: e.target.value, locationBn: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    value={newMemberForm.nid || ''}
+                    onChange={(e) => setNewMemberForm({...newMemberForm, nid: e.target.value})}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 text-xs mb-1 font-semibold text-emerald-400">Email</label>
+                  <input
+                    type="email"
+                    value={newMemberForm.email || ''}
+                    onChange={(e) => setNewMemberForm({...newMemberForm, email: e.target.value})}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -787,12 +983,10 @@ export const GovernanceView: React.FC<Props> = ({
       {/* MOVE MEMBER TO TRASH MODAL */}
       {memberToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative text-slate-100">
             <button
               onClick={() => setMemberToDelete(null)}
               className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
-              title="Close"
-              aria-label="Close modal"
             >
               <X className="w-4 h-4" />
             </button>
@@ -832,12 +1026,10 @@ export const GovernanceView: React.FC<Props> = ({
       {/* PERMANENT PURGE MEMBER MODAL */}
       {memberToPurge && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative text-slate-100">
             <button
               onClick={() => setMemberToPurge(null)}
               className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
-              title="Close"
-              aria-label="Close modal"
             >
               <X className="w-4 h-4" />
             </button>
