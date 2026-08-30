@@ -11,10 +11,14 @@ import {
   approveInstallmentInCloud,
   rejectInstallmentInCloud,
   updateInstallmentDeletionInCloud,
+  deleteInstallmentInCloud,
   subscribeToPaymentAccounts,
   seedInitialPaymentAccountsIfEmpty,
   savePaymentAccountToCloud,
-  deletePaymentAccountInCloud
+  deletePaymentAccountInCloud,
+  subscribeToProjects,
+  saveProjectToCloud,
+  deleteProjectInCloud
 } from './services/firebase';
 
 // Components
@@ -33,6 +37,7 @@ import { LoginModal } from './components/LoginModal';
 import { MoneyReceiptModal } from './components/MoneyReceiptModal';
 import { NoticeBoardModal } from './components/NoticeBoardModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { UniversalTrashModal } from './components/UniversalTrashModal';
 
 // Icons
 import { 
@@ -109,7 +114,21 @@ export default function App() {
     return INITIAL_INSTALLMENTS;
   });
 
-  const [projects] = useState<Project[]>(PROJECTS);
+  // Projects State (Empty by default with dynamic creation & file management)
+  const [projects, setProjects] = useState<Project[]>(() => {
+    // Clear legacy mock data key
+    try {
+      localStorage.removeItem('nxr_projects_v1');
+      const saved = localStorage.getItem('nxr_projects_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return PROJECTS; // Defaults to [] from initialData.ts
+  });
 
   // Notices State (with persistence)
   const [notices, setNotices] = useState<Notice[]>(() => {
@@ -124,6 +143,33 @@ export default function App() {
     }
     return NOTICES;
   });
+
+  // Read and dismissed notices persistence
+  const [readNoticeIds, setReadNoticeIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('nxr_read_notices');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [dismissedNoticeIds, setDismissedNoticeIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('nxr_dismissed_notices');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    safeSetLocalStorage('nxr_read_notices', JSON.stringify(readNoticeIds));
+  }, [readNoticeIds]);
+
+  useEffect(() => {
+    safeSetLocalStorage('nxr_dismissed_notices', JSON.stringify(dismissedNoticeIds));
+  }, [dismissedNoticeIds]);
 
   // Corporate Financial Ledger Transactions State
   const [ledgerTransactions, setLedgerTransactions] = useState<LedgerTransaction[]>(() => {
@@ -187,9 +233,22 @@ export default function App() {
       }
     );
 
+    // Subscribe to real-time projects updates across all devices
+    const unsubscribeProjects = subscribeToProjects(
+      (cloudProjects) => {
+        if (cloudProjects) {
+          setProjects(cloudProjects);
+        }
+      },
+      (error) => {
+        console.warn('Firestore projects subscription status:', error);
+      }
+    );
+
     return () => {
       unsubscribeInstallments();
       unsubscribePayments();
+      unsubscribeProjects();
     };
   }, []);
 
@@ -197,47 +256,61 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showTrashModal, setShowTrashModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Installment | null>(null);
+
+  // Safe LocalStorage setter with Quota Protection
+  const safeSetLocalStorage = (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (err) {
+      console.warn(`LocalStorage write skipped for ${key}:`, err);
+    }
+  };
 
   // 6. LocalStorage Persistence Sync Backup
   useEffect(() => {
-    localStorage.setItem('nxr_lang', lang);
+    safeSetLocalStorage('nxr_lang', lang);
   }, [lang]);
 
   useEffect(() => {
-    localStorage.setItem('nxr_role', role);
+    safeSetLocalStorage('nxr_role', role);
   }, [role]);
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('nxr_current_user', JSON.stringify(currentUser));
+      safeSetLocalStorage('nxr_current_user', JSON.stringify(currentUser));
     } else {
       localStorage.removeItem('nxr_current_user');
     }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('nxr_active_tab', activeTab);
+    safeSetLocalStorage('nxr_active_tab', activeTab);
   }, [activeTab]);
 
   useEffect(() => {
-    localStorage.setItem('nxr_members_v4', JSON.stringify(members));
+    safeSetLocalStorage('nxr_members_v4', JSON.stringify(members));
   }, [members]);
 
   useEffect(() => {
-    localStorage.setItem('nxr_installments_v4', JSON.stringify(installments));
+    safeSetLocalStorage('nxr_installments_v4', JSON.stringify(installments));
   }, [installments]);
 
   useEffect(() => {
-    localStorage.setItem('nxr_notices_v1', JSON.stringify(notices));
+    safeSetLocalStorage('nxr_projects_v2', JSON.stringify(projects));
+  }, [projects]);
+
+  useEffect(() => {
+    safeSetLocalStorage('nxr_notices_v1', JSON.stringify(notices));
   }, [notices]);
 
   useEffect(() => {
-    localStorage.setItem('nxr_ledger_transactions_v2', JSON.stringify(ledgerTransactions));
+    safeSetLocalStorage('nxr_ledger_transactions_v2', JSON.stringify(ledgerTransactions));
   }, [ledgerTransactions]);
 
   useEffect(() => {
-    localStorage.setItem('nxr_payment_accounts_v1', JSON.stringify(paymentAccounts));
+    safeSetLocalStorage('nxr_payment_accounts_v1', JSON.stringify(paymentAccounts));
   }, [paymentAccounts]);
 
   // Ledger Handlers
@@ -249,6 +322,33 @@ export default function App() {
     setLedgerTransactions(prev =>
       prev.map(t => (t.id === id ? { ...t, isDeleted: true } : t))
     );
+  };
+
+  const handleRestoreLedgerTransaction = (id: string) => {
+    setLedgerTransactions(prev =>
+      prev.map(t => (t.id === id ? { ...t, isDeleted: false } : t))
+    );
+  };
+
+  const handlePermanentDeleteLedgerTransaction = (id: string) => {
+    setLedgerTransactions(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handlePurgeAllTrash = async () => {
+    const trashedInstIds = installments.filter(i => i.isDeleted).map(i => i.id);
+    setInstallments(prev => prev.filter(i => !i.isDeleted));
+    setMembers(prev => prev.filter(m => !m.isDeleted).sort(sortMembersById));
+    setLedgerTransactions(prev => prev.filter(t => !t.isDeleted));
+    setNotices(prev => prev.filter(n => !n.isDeleted));
+    setProjects(prev => prev.filter(p => !p.isDeleted));
+
+    for (const instId of trashedInstIds) {
+      try {
+        await deleteInstallmentInCloud(instId);
+      } catch (err) {
+        console.error('Cloud purge error:', err);
+      }
+    }
   };
 
   // Payment Account Handlers (Local & Firestore Cloud Synced)
@@ -288,12 +388,52 @@ export default function App() {
     }
   };
 
-  // Notice Handlers
+  // Project Handlers (Local & Firestore Cloud Synced)
+  const handleCreateProject = async (newProject: Project) => {
+    setProjects(prev => [newProject, ...prev]);
+    try {
+      await saveProjectToCloud(newProject);
+    } catch (err) {
+      console.error('Cloud project create error:', err);
+    }
+  };
+
+  const handleUpdateProject = async (updatedProject: Project) => {
+    setProjects(prev => prev.map(p => (p.id === updatedProject.id ? updatedProject : p)));
+    try {
+      await saveProjectToCloud(updatedProject);
+    } catch (err) {
+      console.error('Cloud project update error:', err);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    try {
+      await deleteProjectInCloud(projectId);
+    } catch (err) {
+      console.error('Cloud project delete error:', err);
+    }
+  };
+
+  // Notice Handlers (Soft Delete to Central Trash Bin)
   const handleAddNotice = (newNotice: Notice) => {
     setNotices(prev => [newNotice, ...prev]);
   };
 
   const handleDeleteNotice = (id: string) => {
+    setNotices(prev =>
+      prev.map(n => (n.id === id ? { ...n, isDeleted: true, deletedAt: new Date().toISOString(), deletedBy: currentUser?.name || 'Admin' } : n))
+    );
+  };
+
+  const handleRestoreNotice = (id: string) => {
+    setNotices(prev =>
+      prev.map(n => (n.id === id ? { ...n, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : n))
+    );
+  };
+
+  const handlePermanentDeleteNotice = (id: string) => {
     setNotices(prev => prev.filter(n => n.id !== id));
   };
 
@@ -301,11 +441,11 @@ export default function App() {
   const handleLoginSuccess = (newRole: Role, user: any) => {
     setRole(newRole);
     setCurrentUser(user);
-    localStorage.setItem('nxr_role', newRole);
-    localStorage.setItem('nxr_current_user', JSON.stringify(user));
+    safeSetLocalStorage('nxr_role', newRole);
+    safeSetLocalStorage('nxr_current_user', JSON.stringify(user));
     const targetTab = newRole === 'admin' ? 'admin-dashboard' : 'member-dashboard';
     setActiveTab(targetTab);
-    localStorage.setItem('nxr_active_tab', targetTab);
+    safeSetLocalStorage('nxr_active_tab', targetTab);
   };
 
   // Handle Logout (Explicitly by user)
@@ -315,7 +455,7 @@ export default function App() {
     setActiveTab('home');
     localStorage.removeItem('nxr_role');
     localStorage.removeItem('nxr_current_user');
-    localStorage.setItem('nxr_active_tab', 'home');
+    safeSetLocalStorage('nxr_active_tab', 'home');
   };
 
   // Submit Installment by Member (Real-time Cloud Broadcast)
@@ -549,10 +689,10 @@ export default function App() {
     setLedgerTransactions(prev => prev.filter(t => t.id !== `LED-${id}`));
   };
 
-  // Member Management Handlers
+  // Member Management Handlers (Strictly Locked NXR-001 to NXR-013 Sequential Sorting)
   const handleUpdateMember = (updatedMember: Member) => {
     setMembers(prev =>
-      prev.map(m => (m.id === updatedMember.id ? updatedMember : m))
+      prev.map(m => (m.id === updatedMember.id ? updatedMember : m)).sort(sortMembersById)
     );
     // If current logged in user is this member, update current user state too
     if (currentUser && currentUser.id === updatedMember.id) {
@@ -572,7 +712,7 @@ export default function App() {
           };
         }
         return m;
-      })
+      }).sort(sortMembersById)
     );
   };
 
@@ -588,24 +728,33 @@ export default function App() {
           };
         }
         return m;
-      })
+      }).sort(sortMembersById)
     );
   };
 
   const handlePermanentDeleteMember = (memberId: string) => {
-    setMembers(prev => prev.filter(m => m.id !== memberId));
+    setMembers(prev => prev.filter(m => m.id !== memberId).sort(sortMembersById));
   };
 
   const handleAddMember = (newMember: Member) => {
-    setMembers(prev => [...prev, newMember]);
+    setMembers(prev => [...prev, newMember].sort(sortMembersById));
   };
 
   const handleRestoreDefaultMembers = () => {
-    setMembers(FOUNDER_MEMBERS);
-    localStorage.setItem('nxr_members_v4', JSON.stringify(FOUNDER_MEMBERS));
+    const sorted = [...FOUNDER_MEMBERS].sort(sortMembersById);
+    setMembers(sorted);
+    localStorage.setItem('nxr_members_v4', JSON.stringify(sorted));
   };
 
   const pendingCount = installments.filter(i => !i.isDeleted && i.status === 'pending').length;
+  const trashedCount = 
+    installments.filter(i => i.isDeleted).length + 
+    members.filter(m => m.isDeleted).length + 
+    ledgerTransactions.filter(t => t.isDeleted).length +
+    notices.filter(n => n.isDeleted).length;
+
+  const activeNotices = notices.filter(n => !n.isDeleted && !dismissedNoticeIds.includes(n.id));
+  const unreadNoticeCount = activeNotices.filter(n => !readNoticeIds.includes(n.id)).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950 flex flex-col justify-between">
@@ -623,8 +772,10 @@ export default function App() {
           onLogout={handleLogout}
           onOpenNotice={() => setShowNoticeModal(true)}
           onOpenChangePassword={() => setShowChangePasswordModal(true)}
+          onOpenTrash={() => setShowTrashModal(true)}
+          trashedCount={trashedCount}
           pendingCount={pendingCount}
-          noticeCount={notices.length}
+          noticeCount={unreadNoticeCount}
           isCloudSynced={isCloudSynced}
         />
 
@@ -675,11 +826,16 @@ export default function App() {
             />
           )}
 
-          {/* Projects View (Public side only) */}
-          {activeTab === 'projects' && role === 'public' && (
+          {/* Projects View (Available for All Roles) */}
+          {activeTab === 'projects' && (
             <ProjectsView
               projects={projects}
               lang={lang}
+              role={role}
+              currentUser={currentUser}
+              onCreateProject={handleCreateProject}
+              onUpdateProject={handleUpdateProject}
+              onDeleteProject={handleDeleteProject}
             />
           )}
 
@@ -690,6 +846,7 @@ export default function App() {
               installments={installments}
               lang={lang}
               onViewReceipt={(inst) => setSelectedReceipt(inst)}
+              onUpdateMember={handleUpdateMember}
             />
           )}
 
@@ -876,6 +1033,10 @@ export default function App() {
         onClose={() => setShowNoticeModal(false)}
         onAddNotice={handleAddNotice}
         onDeleteNotice={handleDeleteNotice}
+        readNoticeIds={readNoticeIds}
+        setReadNoticeIds={setReadNoticeIds}
+        dismissedNoticeIds={dismissedNoticeIds}
+        setDismissedNoticeIds={setDismissedNoticeIds}
       />
 
       <ChangePasswordModal
@@ -894,6 +1055,27 @@ export default function App() {
           onClose={() => setSelectedReceipt(null)}
         />
       )}
+
+      {/* Universal Trash & Audit Bin Modal */}
+      <UniversalTrashModal
+        isOpen={showTrashModal}
+        onClose={() => setShowTrashModal(false)}
+        lang={lang}
+        installments={installments}
+        members={members}
+        ledgerTransactions={ledgerTransactions}
+        notices={notices}
+        projects={projects}
+        onRestoreInstallment={handleRestoreInstallment}
+        onPermanentDeleteInstallment={handlePermanentDeleteInstallment}
+        onRestoreMember={handleRestoreMember}
+        onPermanentDeleteMember={handlePermanentDeleteMember}
+        onRestoreLedgerTransaction={handleRestoreLedgerTransaction}
+        onPermanentDeleteLedgerTransaction={handlePermanentDeleteLedgerTransaction}
+        onRestoreNotice={handleRestoreNotice}
+        onPermanentDeleteNotice={handlePermanentDeleteNotice}
+        onPurgeAllTrash={handlePurgeAllTrash}
+      />
 
     </div>
   );

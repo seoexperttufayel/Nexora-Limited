@@ -381,57 +381,79 @@ export const HomeView: React.FC<Props> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {projects.map((proj) => (
-            <div
-              key={proj.id}
-              className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden flex flex-col hover:border-slate-700 transition group shadow-lg"
+        {projects.length === 0 ? (
+          <div className="p-8 sm:p-12 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-3">
+            <p className="text-sm font-semibold text-slate-300">
+              {lang === 'bn' ? 'বর্তমানে নতুন প্রকল্প প্রণয়নের কাজ চলছে।' : 'New investment ventures are currently in planning stage.'}
+            </p>
+            <button
+              onClick={() => onSelectTab('projects')}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 text-xs font-bold transition"
             >
-              <div className="h-44 overflow-hidden relative">
-                <img
-                  src={proj.image}
-                  alt={proj.titleEn}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                />
-                <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-400 border border-emerald-500/30">
-                  {lang === 'bn' ? proj.categoryBn : proj.categoryEn}
-                </div>
-              </div>
+              <span>{lang === 'bn' ? 'প্রকল্প ড্যাশবোর্ডে যান' : 'Go to Projects Portal'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {projects.slice(0, 3).map((proj) => {
+              const target = proj.targetBudget || 1;
+              const raised = proj.raisedBudget || 0;
+              const progress = Math.min(100, Math.round((raised / target) * 100));
 
-              <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition leading-snug">
-                    {lang === 'bn' ? proj.titleBn : proj.titleEn}
-                  </h3>
-                  <p className="text-xs text-slate-400 line-clamp-2 mt-2 leading-relaxed">
-                    {lang === 'bn' ? proj.descriptionBn : proj.descriptionEn}
-                  </p>
-                </div>
-
-                <div className="space-y-3 pt-3 border-t border-slate-800 text-xs">
-                  <div className="flex justify-between text-slate-400">
-                    <span>{lang === 'bn' ? 'তহবিল সংগ্রহ' : 'Funding Progress'}</span>
-                    <span className="font-bold text-white font-mono">
-                      {Math.round((proj.raisedBudget / proj.targetBudget) * 100)}%
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, (proj.raisedBudget / proj.targetBudget) * 100)}%` }}
+              return (
+                <div
+                  key={proj.id}
+                  onClick={() => onSelectTab('projects')}
+                  className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden flex flex-col hover:border-emerald-500/40 transition group shadow-lg cursor-pointer"
+                >
+                  <div className="h-44 overflow-hidden relative">
+                    <img
+                      src={proj.image || 'https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=800&q=80'}
+                      alt={proj.titleEn}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                     />
+                    <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-400 border border-emerald-500/30">
+                      {lang === 'bn' ? proj.categoryBn : proj.categoryEn}
+                    </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-[11px] text-emerald-400 font-medium pt-1">
-                    <span>{lang === 'bn' ? proj.shariahModelBn : proj.shariahModelEn}</span>
-                    <span className="text-slate-400">৳ {(proj.raisedBudget / 100000).toFixed(1)}L Raised</span>
+                  <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition leading-snug">
+                        {lang === 'bn' ? proj.titleBn : proj.titleEn}
+                      </h3>
+                      <p className="text-xs text-slate-400 line-clamp-2 mt-2 leading-relaxed">
+                        {lang === 'bn' ? proj.descriptionBn : proj.descriptionEn}
+                      </p>
+                    </div>
+
+                    <div className="space-y-3 pt-3 border-t border-slate-800 text-xs">
+                      <div className="flex justify-between text-slate-400">
+                        <span>{lang === 'bn' ? 'তহবিল সংগ্রহ' : 'Funding Progress'}</span>
+                        <span className="font-bold text-white font-mono">
+                          {progress}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+
+                      <div className="flex justify-between items-center text-[11px] text-emerald-400 font-medium pt-1">
+                        <span>{lang === 'bn' ? proj.shariahModelBn : proj.shariahModelEn}</span>
+                        <span className="text-slate-400">৳ {(raised / 100000).toFixed(1)}L Raised</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* INSTITUTIONAL GOVERNANCE & PRIVACY-PROTECTED LEADERSHIP OVERVIEW */}

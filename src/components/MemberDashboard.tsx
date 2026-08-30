@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Member, Installment, Language } from '../types';
 import { translations } from '../data/translations';
+import { ImageCropModal } from './ImageCropModal';
 import { 
   FileText, CheckCircle2, Clock, XCircle, 
   ShieldCheck, TrendingUp, Sparkles, Building2,
-  Wallet, Landmark
+  Wallet, Landmark, Camera, Upload, Check, Trash2
 } from 'lucide-react';
 
 interface Props {
@@ -12,15 +13,65 @@ interface Props {
   installments: Installment[];
   lang: Language;
   onViewReceipt: (inst: Installment) => void;
+  onUpdateMember?: (updatedMember: Member) => void;
 }
 
 export const MemberDashboard: React.FC<Props> = ({
   member,
   installments,
   lang,
-  onViewReceipt
+  onViewReceipt,
+  onUpdateMember
 }) => {
   const t = translations[lang];
+  const [successToast, setSuccessToast] = useState('');
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef2 = useRef<HTMLInputElement>(null);
+
+  // Handle avatar file pick and open crop modal
+  const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setCropImageSrc(reader.result);
+        setCropModalOpen(true);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so re-selecting same file triggers change
+    e.target.value = '';
+  };
+
+  // When user confirms crop in ImageCropModal
+  const handleCropComplete = (croppedDataUrl: string) => {
+    const updated: Member = {
+      ...member,
+      avatarUrl: croppedDataUrl
+    };
+    if (onUpdateMember) {
+      onUpdateMember(updated);
+    }
+    setSuccessToast(lang === 'bn' ? 'প্রোফাইল ছবি সফলভাবে আপডেট হয়েছে!' : 'Profile picture updated successfully!');
+    setTimeout(() => setSuccessToast(''), 3000);
+  };
+
+  const handleRemoveAvatar = () => {
+    const updated: Member = {
+      ...member,
+      avatarUrl: ''
+    };
+    if (onUpdateMember) {
+      onUpdateMember(updated);
+    }
+    setSuccessToast(lang === 'bn' ? 'প্রোফাইল ছবি মুছে ফেলা হয়েছে।' : 'Profile picture removed.');
+    setTimeout(() => setSuccessToast(''), 3000);
+  };
 
   // Company-wide total accumulated verified capital across all members
   const totalCompanyCapital = installments
@@ -43,21 +94,49 @@ export const MemberDashboard: React.FC<Props> = ({
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-300">
       
+      {/* Toast Notification */}
+      {successToast && (
+        <div className="fixed top-20 right-6 z-50 p-4 rounded-2xl bg-emerald-600 text-white shadow-2xl flex items-center gap-2 text-xs sm:text-sm font-bold border border-emerald-400/30 animate-in slide-in-from-top duration-200">
+          <CheckCircle2 className="w-5 h-5 text-white" />
+          <span>{successToast}</span>
+        </div>
+      )}
+
       {/* MEMBER PROFILE HERO BANNER */}
       <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center space-x-4">
-          {member.avatarUrl ? (
-            <img 
-              src={member.avatarUrl} 
-              alt={member.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-lg shadow-emerald-500/20 shrink-0"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-2xl shadow-lg shadow-emerald-500/20 shrink-0">
-              {member.name.charAt(0)}
-            </div>
-          )}
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-5">
+          
+          {/* Avatar with Interactive Upload Overlay */}
+          <div className="relative group self-start sm:self-center">
+            {member.avatarUrl ? (
+              <img 
+                src={member.avatarUrl} 
+                alt={member.name}
+                className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-lg shadow-emerald-500/20 shrink-0"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-3xl shadow-lg shadow-emerald-500/20 shrink-0">
+                {member.name.charAt(0)}
+              </div>
+            )}
+
+            {/* Hover / Touch Upload Button */}
+            <label className="absolute inset-0 bg-slate-950/70 rounded-2xl flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer backdrop-blur-[2px]">
+              <Camera className="w-5 h-5 text-emerald-400" />
+              <span className="text-[9px] font-bold text-center mt-1">
+                {lang === 'bn' ? 'ছবি বদলান' : 'Change'}
+              </span>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleAvatarFileSelect}
+              />
+            </label>
+          </div>
+
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
@@ -74,6 +153,31 @@ export const MemberDashboard: React.FC<Props> = ({
               <span><strong className="text-slate-300">Phone:</strong> {member.phone}</span>
               {member.email && <span>• <strong className="text-slate-300">Email:</strong> {member.email}</span>}
               {member.nid && <span>• <strong className="text-emerald-400 font-mono">NID:</strong> <span className="font-mono text-emerald-300">{member.nid}</span></span>}
+            </div>
+
+            {/* Quick action buttons under profile for easy photo management */}
+            <div className="flex items-center gap-2 mt-3">
+              <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition inline-flex items-center gap-1.5 active:scale-95 shadow-sm">
+                <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{lang === 'bn' ? 'প্রোফাইল ছবি পরিবর্তন ও ক্রপ' : 'Update & Crop Photo'}</span>
+                <input 
+                  ref={fileInputRef2}
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleAvatarFileSelect}
+                />
+              </label>
+              {member.avatarUrl && (
+                <button
+                  onClick={handleRemoveAvatar}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold transition inline-flex items-center gap-1"
+                  title="Remove Avatar"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'ছবি মুছুন' : 'Remove'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -254,6 +358,19 @@ export const MemberDashboard: React.FC<Props> = ({
           </table>
         </div>
       </div>
+
+      {/* Profile Photo Crop & Adjustment Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        imageSrc={cropImageSrc}
+        lang={lang}
+        title={lang === 'bn' ? `${member.nameBn}-এর প্রোফাইল ছবি ক্রপ করুন` : `Crop Profile Photo for ${member.name}`}
+        onClose={() => {
+          setCropModalOpen(false);
+          setCropImageSrc('');
+        }}
+        onCropComplete={handleCropComplete}
+      />
 
     </div>
   );

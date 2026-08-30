@@ -86,6 +86,25 @@ export interface PaymentAccountConfig {
   isActive: boolean;
 }
 
+export interface ProjectDocument {
+  id: string;
+  name: string;
+  fileUrl: string; // base64 data url or url
+  fileType?: string;
+  fileSize?: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+}
+
+export interface ProjectUpdate {
+  id: string;
+  title?: string;
+  text: string;
+  date: string;
+  author?: string;
+  photos?: string[];
+}
+
 export interface Project {
   id: string;
   titleEn: string;
@@ -105,6 +124,12 @@ export interface Project {
   shariahModelBn: string;
   startDate: string;
   image: string;
+  photos?: string[];
+  documents?: ProjectDocument[];
+  updates?: ProjectUpdate[];
+  createdAt?: string;
+  createdBy?: string;
+  isDeleted?: boolean;
 }
 
 export interface Notice {
@@ -118,6 +143,9 @@ export interface Notice {
   important?: boolean;
   readBy?: string[];
   dismissedBy?: string[];
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CompanyPost {

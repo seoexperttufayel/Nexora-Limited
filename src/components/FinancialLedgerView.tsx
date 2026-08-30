@@ -305,23 +305,17 @@ export const FinancialLedgerView: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Corporate Details Micro-Bar */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div>
-            <span className="text-slate-400 block text-[11px] uppercase tracking-wider">{lang === 'bn' ? 'হিসাব পরিচালনাকারী' : 'Account Entity'}</span>
-            <span className="font-bold text-white">NEXORA LIMITED</span>
+        {/* Corporate Transparency Status Micro-Bar */}
+        <div className="mt-6 pt-5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-400">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-semibold text-slate-300">
+              {lang === 'bn' ? 'অডিট স্ট্যাটাস: রিয়েল-টাইম ব্যালেন্স ও ভাউচার সমন্বয় সম্পন্ন' : 'Audit Status: Real-time dynamic treasury balance synchronized'}
+            </span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[11px] uppercase tracking-wider">{lang === 'bn' ? 'প্রধান ব্যাংক' : 'Principal Bank'}</span>
-            <span className="font-semibold text-emerald-400">Islami Bank Bangladesh PLC</span>
-          </div>
-          <div>
-            <span className="text-slate-400 block text-[11px] uppercase tracking-wider">{lang === 'bn' ? 'শাখা ও রাউটিং' : 'Branch & Routing'}</span>
-            <span className="font-medium text-slate-300">Zindabazar (125261458)</span>
-          </div>
-          <div>
-            <span className="text-slate-400 block text-[11px] uppercase tracking-wider">{lang === 'bn' ? 'স্টেটমেন্ট তৈরির সময়' : 'Generated At'}</span>
-            <span className="font-mono text-slate-300">{new Date().toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span className="text-slate-400">{lang === 'bn' ? 'স্টেটমেন্ট তৈরির সময়: ' : 'Statement Generated: '}</span>
+            <span className="font-mono text-slate-300 font-semibold">{new Date().toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </div>
         </div>
       </div>

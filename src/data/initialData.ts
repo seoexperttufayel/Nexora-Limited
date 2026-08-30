@@ -226,68 +226,7 @@ export const FOUNDER_MEMBERS: Member[] = [
 
 export const INITIAL_INSTALLMENTS: Installment[] = [];
 
-export const PROJECTS: Project[] = [
-  {
-    id: 'PRJ-001',
-    titleEn: 'Nexora Green Agro & Dairy Farm',
-    titleBn: 'নেক্সোরা গ্রিন এগ্রো ও ডেইরি ফার্ম',
-    categoryEn: 'Halal Agro Ventures',
-    categoryBn: 'হালাল কৃষি উদ্যোগ',
-    locationEn: 'Sreepur, Gazipur, Bangladesh',
-    locationBn: 'শ্রীপুর, গাজীপুর, বাংলাদেশ',
-    targetBudget: 2500000,
-    raisedBudget: 1850000,
-    status: 'ongoing',
-    expectedReturnEn: '18% - 24% Projected Annual Yield',
-    expectedReturnBn: '১৮% - ২৪% বার্ষিক সম্ভাব্য মুনাফা',
-    descriptionEn: 'An integrated sustainable dairy, livestock fattening, and organic greenhouse agro-facility based on Islamic Mudarabah partnership principles.',
-    descriptionBn: 'ইসলামিক মুদারাবা নীতিমালার উপর ভিত্তি করে একটি সমন্বিত ডেইরি, পশু মোটাতাজাকরণ ও অর্গানিক গ্রিনহাউস কৃষি প্রকল্প।',
-    shariahModelEn: 'Musharakah Mutanaqisa (Diminishing Partnership)',
-    shariahModelBn: 'মুশারাকা মুতানাকিসাহ (ক্রমহ্রাসমান অংশীদারি)',
-    startDate: '2026-03-01',
-    image: 'https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'PRJ-002',
-    titleEn: 'Nexora Prime Commercial Plaza',
-    titleBn: 'নেক্সোরা প্রাইম বাণিজ্যিক প্লাজা',
-    categoryEn: 'Real Estate & Commercial Lease',
-    categoryBn: 'রিয়েল এস্টেট ও বাণিজ্যিক লিজ',
-    locationEn: 'Purbachal Sector 4, Dhaka',
-    locationBn: 'পূর্বাচল সেক্টর ৪, ঢাকা',
-    targetBudget: 5000000,
-    raisedBudget: 3200000,
-    status: 'planning',
-    expectedReturnEn: '22% - 28% Projected Capital Appreciation',
-    expectedReturnBn: '২২% - ২৮% মূলধনী প্রবৃদ্ধি ও লিজ আয়',
-    descriptionEn: 'Prime modern eco-commercial space designed for corporate retail, tech hubs, and halal retail outlets with direct highway connectivity.',
-    descriptionBn: 'কর্পোরেট রিটেইল, প্রযুক্তি কেন্দ্র ও আধুনিক ব্যবসার জন্য প্রাইম বাণিজ্যিক স্পেস, যা দীর্ঘমেয়াদী সুরক্ষিত লিজ আয়ের উৎস।',
-    shariahModelEn: 'Ijarah Muntahia Bittamleek (Lease-to-Own)',
-    shariahModelBn: 'ইজারা মুনতাহিয়া বিত্তামলিক (মালিকানাভিত্তিক লিজ)',
-    startDate: '2026-06-15',
-    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'PRJ-003',
-    titleEn: 'Nexora Halal Logistics & Warehousing',
-    titleBn: 'নেক্সোরা হালাল লজিস্টিকস ও ওয়্যারহাউস',
-    categoryEn: 'Supply Chain & Cold Storage',
-    categoryBn: 'সাপ্লাই চেইন ও কোল্ড স্টোরেজ',
-    locationEn: 'Chittagong Highway Corridor, Narayanganj',
-    locationBn: 'চট্টগ্রাম হাইওয়ে করিডোর, নারায়ণগঞ্জ',
-    targetBudget: 1800000,
-    raisedBudget: 1800000,
-    status: 'completed',
-    expectedReturnEn: 'Active Dividend Distribution (Quarterly)',
-    expectedReturnBn: 'সক্রিয় লভ্যাংশ বণ্টন (ত্রৈমাসিক)',
-    descriptionEn: 'Temperature-controlled halal cold-chain infrastructure servicing agricultural produce, pharmaceuticals, and essential food items.',
-    descriptionBn: 'কৃষিপণ্য ও প্রয়োজনীয় খাদ্য সামগ্রীর গুণগত মান নিশ্চিতকারী আধুনিক তাপমাত্রা-নিয়ন্ত্রিত সেন্ট্রাল কোল্ড স্টোরেজ।',
-    shariahModelEn: 'Mudarabah (Profit-Sharing Partnership)',
-    shariahModelBn: 'মুদারাবা (মুনাফা বণ্টন অংশীদারি)',
-    startDate: '2026-02-01',
-    image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80'
-  }
-];
+export const PROJECTS: Project[] = [];
 
 export const NOTICES: Notice[] = [
   {

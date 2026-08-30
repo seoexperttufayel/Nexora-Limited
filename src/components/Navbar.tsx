@@ -5,7 +5,7 @@ import { NexoraLogo } from './NexoraLogo';
 import { 
   ShieldCheck, Globe, Lock, LogOut, UserCheck, 
   Menu, X, Sparkles, Building2, Bell, FileText, CheckCircle2,
-  KeyRound, ChevronRight, User, Landmark
+  KeyRound, ChevronRight, User, Landmark, Trash2
 } from 'lucide-react';
 
 interface Props {
@@ -19,8 +19,10 @@ interface Props {
   onLogout: () => void;
   onOpenNotice: () => void;
   onOpenChangePassword: () => void;
+  onOpenTrash?: () => void;
   pendingCount: number;
   noticeCount?: number;
+  trashedCount?: number;
   isCloudSynced?: boolean;
 }
 
@@ -35,8 +37,10 @@ export const Navbar: React.FC<Props> = ({
   onLogout,
   onOpenNotice,
   onOpenChangePassword,
+  onOpenTrash,
   pendingCount,
   noticeCount = 0,
+  trashedCount = 0,
   isCloudSynced = true
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,58 +52,58 @@ export const Navbar: React.FC<Props> = ({
   };
 
   return (
-    <header className="bg-slate-900/98 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 shadow-2xl transition-none will-change-transform print:hidden w-full">
+    <header className="bg-slate-900/98 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 shadow-2xl transition-none will-change-transform print:hidden w-full max-w-full overflow-x-hidden">
       
       {/* TOP ANNOUNCEMENT & SHARIAH BAR */}
       <div className="bg-emerald-950/40 border-b border-emerald-500/10 px-3 sm:px-4 py-1.5 text-xs text-slate-300">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="flex h-2 w-2 relative">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+            <span className="flex h-2 w-2 relative shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-emerald-400 font-semibold text-[11px] sm:text-xs">{t.shariahBadge}</span>
+            <span className="text-emerald-400 font-semibold text-[10px] sm:text-xs truncate">{t.shariahBadge}</span>
             <span className="hidden md:inline text-slate-400">•</span>
-            <span className="hidden md:inline text-slate-300 text-xs">
+            <span className="hidden md:inline text-slate-300 text-xs truncate">
               {lang === 'bn' ? '১৩ জন প্রতিষ্ঠাতা অংশীদারের শরিয়াহ-সম্মত নিরাপদ যৌথ প্ল্যাটফর্ম' : 'Secured Portal for 13 Founder Shareholders & Governance'}
             </span>
           </div>
 
-          <div className="flex items-center space-x-3 text-[11px]">
-            <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-[10px]">
+          <div className="flex items-center space-x-2 sm:space-x-3 text-[10px] sm:text-[11px] shrink-0">
+            <div className="flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-[9px] sm:text-[10px]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{lang === 'bn' ? 'ফায়ারবেস ক্লাউড সিঙ্ক: সক্রিয়' : 'Firestore Cloud Sync: Live'}</span>
+              <span>{lang === 'bn' ? 'ক্লাউড সিঙ্ক: লাইভ' : 'Cloud Sync: Live'}</span>
             </div>
-            <span className="text-slate-400 font-mono">Reg: C-198420/2026</span>
+            <span className="hidden xs:inline text-slate-400 font-mono">Reg: C-198420/2026</span>
           </div>
         </div>
       </div>
 
       {/* MAIN NAVBAR */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
         
         {/* Brand Logo & Name */}
         <div 
-          className="flex items-center cursor-pointer group shrink-0"
+          className="flex items-center cursor-pointer group shrink-0 min-w-0"
           onClick={() => setActiveTab(role === 'admin' ? 'admin-dashboard' : role === 'member' ? 'member-dashboard' : 'home')}
         >
           <NexoraLogo size="md" variant="full" />
         </div>
 
         {/* Right Action Tools: Notice Board Button directly adjacent to Language Switcher */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2.5">
+        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
           
-          {/* NOTICE BOARD (বিজ্ঞপ্তি বোর্ড) ICON BUTTON - MOVED DIRECTLY NEXT TO LANGUAGE SWITCHER */}
+          {/* NOTICE BOARD (বিজ্ঞপ্তি বোর্ড) ICON BUTTON */}
           <button
             onClick={onOpenNotice}
-            className="relative flex items-center space-x-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition border border-slate-700 shadow-sm active:scale-95 group"
+            className="relative flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition border border-slate-700 shadow-sm active:scale-95 group shrink-0"
             title="Notice Board / বিজ্ঞপ্তি বোর্ড"
             aria-label="Open Notice Board"
           >
-            <Bell className="w-4 h-4 text-amber-400 group-hover:animate-bounce" />
-            <span className="hidden sm:inline">{lang === 'bn' ? 'বিজ্ঞপ্তি' : 'Notices'}</span>
+            <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 group-hover:animate-bounce" />
+            <span className="hidden md:inline">{lang === 'bn' ? 'বিজ্ঞপ্তি' : 'Notices'}</span>
             {noticeCount > 0 && (
-              <span className="w-4 h-4 sm:w-4 sm:h-4 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] sm:text-[10px] flex items-center justify-center -ml-0.5">
+              <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] sm:text-[10px] flex items-center justify-center -ml-0.5">
                 {noticeCount}
               </span>
             )}
@@ -108,29 +112,57 @@ export const Navbar: React.FC<Props> = ({
           {/* Language Toggle Button */}
           <button
             onClick={() => setLang(lang === 'bn' ? 'en' : 'bn')}
-            className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition border border-slate-700 shadow-sm active:scale-95"
+            className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition border border-slate-700 shadow-sm active:scale-95 shrink-0"
             title="Toggle Language / ভাষা পরিবর্তন"
             aria-label="Toggle Language"
           >
-            <Globe className="w-4 h-4 text-emerald-400" />
-            <span className="hidden xs:inline sm:inline">{lang === 'bn' ? 'English' : 'বাংলা'}</span>
+            <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+            <span className="text-[11px] sm:text-xs font-bold">{lang === 'bn' ? 'EN' : 'বাং'}</span>
           </button>
+
+          {/* Super Admin Central Trash Bin Button */}
+          {role === 'admin' && onOpenTrash && (
+            <button
+              onClick={onOpenTrash}
+              className="relative p-1.5 sm:px-2.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-200 hover:text-rose-400 text-xs font-semibold transition border border-slate-700 shadow-sm active:scale-95 shrink-0 flex items-center gap-1"
+              title="Central Trash & Audit / ট্র্যাশ বিন"
+              aria-label="Central Trash Bin"
+            >
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" />
+              <span className="hidden md:inline text-[11px]">{lang === 'bn' ? 'ট্র্যাশ' : 'Trash'}</span>
+              {trashedCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center">
+                  {trashedCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Auth Button or User Profile Badge */}
           {role === 'public' ? (
             <button
               onClick={onOpenLogin}
-              className="flex items-center space-x-1.5 sm:space-x-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/25 active:scale-95 shrink-0"
+              className="flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/25 active:scale-95 shrink-0"
             >
-              <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>{t.clientArea}</span>
+              <Lock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{t.clientArea}</span>
+              <span className="sm:hidden">{lang === 'bn' ? 'লগইন' : 'Login'}</span>
             </button>
           ) : (
-            <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-800/90 border border-slate-700/80 p-1 sm:p-1.5 pr-2 sm:pr-2.5 rounded-2xl shrink-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400 text-[11px] sm:text-xs font-mono">
-                {role === 'admin' ? 'ADM' : currentUser?.id?.slice(-3) || 'MEM'}
-              </div>
-              <div className="text-left hidden md:block">
+            <div className="flex items-center space-x-1 sm:space-x-1.5 bg-slate-800/90 border border-slate-700/80 p-1 sm:p-1.5 pr-1.5 sm:pr-2.5 rounded-2xl shrink-0">
+              {currentUser?.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.name}
+                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-xl object-cover aspect-square border border-emerald-500/50 shadow-sm shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400 text-[10px] sm:text-xs font-mono shrink-0">
+                  {role === 'admin' ? 'ADM' : currentUser?.id?.slice(-3) || 'MEM'}
+                </div>
+              )}
+              <div className="text-left hidden lg:block">
                 <p className="text-xs font-bold text-white leading-tight truncate max-w-[100px] xl:max-w-[130px]">
                   {lang === 'bn' ? (currentUser?.nameBn || currentUser?.name) : currentUser?.name}
                 </p>
@@ -141,7 +173,7 @@ export const Navbar: React.FC<Props> = ({
 
               <button
                 onClick={onLogout}
-                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition"
+                className="p-1 sm:p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition"
                 title={t.logout}
                 aria-label="Logout"
               >
@@ -150,10 +182,10 @@ export const Navbar: React.FC<Props> = ({
             </div>
           )}
 
-          {/* 3-LINE MENU TOGGLE BUTTON (AVAILABLE ON ALL DEVICES) */}
+          {/* 3-LINE MENU TOGGLE BUTTON */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center justify-center shrink-0 active:scale-95"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center justify-center shrink-0 active:scale-95"
             title="Menu / মেনু"
             aria-label="Toggle Menu"
           >
@@ -164,8 +196,8 @@ export const Navbar: React.FC<Props> = ({
       </div>
 
       {/* HORIZONTAL SECONDARY NAVIGATION BAR */}
-      <nav className="bg-slate-900/95 border-t border-slate-800/80 px-3 sm:px-6 lg:px-8 overflow-x-auto scrollbar-none">
-        <div className="max-w-7xl mx-auto flex space-x-1 sm:space-x-2 py-2 sm:py-2.5 whitespace-nowrap">
+      <nav className="bg-slate-900/95 border-t border-slate-800/80 px-2.5 sm:px-6 lg:px-8 overflow-x-auto scrollbar-none">
+        <div className="max-w-7xl mx-auto flex space-x-1 sm:space-x-2 py-1.5 sm:py-2.5 whitespace-nowrap">
           
           {/* Public Views */}
           {role === 'public' && (
@@ -206,6 +238,7 @@ export const Navbar: React.FC<Props> = ({
           {/* Member Views */}
           {role === 'member' && (
             <>
+              {/* 1. ড্যাশবোর্ড (Dashboard) */}
               <button
                 onClick={() => setActiveTab('member-dashboard')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -216,6 +249,8 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.memberDashboard}
               </button>
+
+              {/* 2. কিস্তি জমা দিন (Submit Installment) */}
               <button
                 onClick={() => setActiveTab('member-deposit')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -224,8 +259,10 @@ export const Navbar: React.FC<Props> = ({
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`}
               >
-                {lang === 'bn' ? 'মাসিক কিস্তি জমা দিন' : 'Submit Monthly Installment'}
+                {lang === 'bn' ? 'কিস্তি জমা দিন' : 'Submit Installment'}
               </button>
+
+              {/* 3. কিস্তি ও লেজার (Installment & Ledger) */}
               <button
                 onClick={() => setActiveTab('installments')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -236,6 +273,21 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.installments}
               </button>
+
+              {/* 4. আর্থিক লেজার (Financial Ledger) */}
+              <button
+                onClick={() => setActiveTab('financial-ledger')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
+                  activeTab === 'financial-ledger'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <Landmark className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</span>
+              </button>
+
+              {/* 5. পরিচালনা পরিষদ ও শেয়ারহোল্ডার (Governance & Shareholders) */}
               <button
                 onClick={() => setActiveTab('governance')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -246,12 +298,25 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.governance}
               </button>
+
+              {/* 6. প্রকল্পসমূহ (Projects) */}
+              <button
+                onClick={() => setActiveTab('projects')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
+                  activeTab === 'projects'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                {t.projects}
+              </button>
             </>
           )}
 
           {/* Admin Views */}
           {role === 'admin' && (
             <>
+              {/* 1. অ্যাডমিন ড্যাশবোর্ড (Admin Dashboard) */}
               <button
                 onClick={() => setActiveTab('admin-dashboard')}
                 className={`flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -267,6 +332,8 @@ export const Navbar: React.FC<Props> = ({
                   </span>
                 )}
               </button>
+
+              {/* 2. কিস্তি জমা দিন (Submit Installment) */}
               <button
                 onClick={() => setActiveTab('admin-deposit')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -277,17 +344,8 @@ export const Navbar: React.FC<Props> = ({
               >
                 {lang === 'bn' ? 'কিস্তি জমা দিন' : 'Deposit Installment'}
               </button>
-              <button
-                onClick={() => setActiveTab('financial-ledger')}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
-                  activeTab === 'financial-ledger'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <Landmark className="w-3.5 h-3.5" />
-                <span>{lang === 'bn' ? 'আর্থিক লেজার (আয়-ব্যয়)' : 'Financial Ledger'}</span>
-              </button>
+
+              {/* 3. কিস্তি ও লেজার (Installment & Ledger) */}
               <button
                 onClick={() => setActiveTab('installments')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -298,6 +356,21 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.installments}
               </button>
+
+              {/* 4. আর্থিক লেজার (Financial Ledger) */}
+              <button
+                onClick={() => setActiveTab('financial-ledger')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
+                  activeTab === 'financial-ledger'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <Landmark className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</span>
+              </button>
+
+              {/* 5. পরিচালনা পরিষদ ও শেয়ারহোল্ডার (Governance & Shareholders) */}
               <button
                 onClick={() => setActiveTab('governance')}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
@@ -307,6 +380,18 @@ export const Navbar: React.FC<Props> = ({
                 }`}
               >
                 {t.governance}
+              </button>
+
+              {/* 6. প্রকল্পসমূহ (Projects) */}
+              <button
+                onClick={() => setActiveTab('projects')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition ${
+                  activeTab === 'projects'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                {t.projects}
               </button>
             </>
           )}
@@ -321,15 +406,15 @@ export const Navbar: React.FC<Props> = ({
           {/* User Profile Banner if logged in */}
           {role !== 'public' && currentUser && (
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400 shrink-0">
                   {role === 'admin' ? 'ADM' : currentUser.name?.charAt(0)}
                 </div>
-                <div>
-                  <p className="font-bold text-white text-sm">
+                <div className="min-w-0">
+                  <p className="font-bold text-white text-sm truncate">
                     {lang === 'bn' ? (currentUser.nameBn || currentUser.name) : currentUser.name}
                   </p>
-                  <p className="text-xs text-emerald-400 font-mono">
+                  <p className="text-xs text-emerald-400 font-mono truncate">
                     {role === 'admin' ? 'Super Administrator' : `${currentUser.id} • ${currentUser.share}% Equity`}
                   </p>
                 </div>
@@ -341,7 +426,7 @@ export const Navbar: React.FC<Props> = ({
                   setMenuOpen(false);
                   onOpenChangePassword();
                 }}
-                className="px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition"
+                className="px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition shrink-0"
               >
                 <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                 <span>{t.changePassword}</span>
@@ -364,9 +449,11 @@ export const Navbar: React.FC<Props> = ({
               ) : role === 'member' ? (
                 <>
                   <button onClick={() => handleNavClick('member-dashboard')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.memberDashboard}</button>
-                  <button onClick={() => handleNavClick('member-deposit')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'মাসিক কিস্তি জমা দিন' : 'Submit Monthly Installment'}</button>
+                  <button onClick={() => handleNavClick('member-deposit')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'কিস্তি জমা দিন' : 'Submit Installment'}</button>
                   <button onClick={() => handleNavClick('installments')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.installments}</button>
+                  <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
+                  <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
                   <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5 col-span-2 sm:col-span-1">
                     <KeyRound className="w-3.5 h-3.5" />
                     <span>{t.changePassword}</span>
@@ -376,10 +463,17 @@ export const Navbar: React.FC<Props> = ({
                 <>
                   <button onClick={() => handleNavClick('admin-dashboard')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.adminPanel}</button>
                   <button onClick={() => handleNavClick('admin-deposit')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'কিস্তি জমা দিন' : 'Deposit Installment'}</button>
-                  <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'করপোরেট আর্থিক লেজার' : 'Corporate Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('installments')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.installments}</button>
+                  <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
-                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5 col-span-2 sm:col-span-1">
+                  <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
+                  {onOpenTrash && (
+                    <button onClick={() => { setMenuOpen(false); onOpenTrash(); }} className="p-3 text-left bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl font-medium flex items-center gap-1.5">
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{lang === 'bn' ? 'সেন্ট্রাল ট্র্যাশ বিন' : 'Central Trash'}</span>
+                    </button>
+                  )}
+                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5">
                     <KeyRound className="w-3.5 h-3.5" />
                     <span>{t.changePassword}</span>
                   </button>
@@ -437,3 +531,4 @@ export const Navbar: React.FC<Props> = ({
     </header>
   );
 };
+

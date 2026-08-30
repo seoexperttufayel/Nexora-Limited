@@ -11,7 +11,7 @@ import {
   getDocs,
   writeBatch
 } from 'firebase/firestore';
-import { Installment, Member } from '../types';
+import { Installment, Member, Project } from '../types';
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 
 // Firebase Configuration
@@ -37,6 +37,7 @@ const INSTALLMENTS_COLLECTION = 'installments';
 const MEMBERS_COLLECTION = 'members';
 const PAYMENT_ACCOUNTS_COLLECTION = 'payment_accounts';
 const LEDGER_COLLECTION = 'ledger_transactions';
+const PROJECTS_COLLECTION = 'projects';
 
 /**
  * Real-time subscription to installments collection in Firestore.
@@ -144,6 +145,19 @@ export const updateInstallmentDeletionInCloud = async (
 };
 
 /**
+ * Permanent Delete Installment in Firestore
+ */
+export const deleteInstallmentInCloud = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, INSTALLMENTS_COLLECTION, id);
+    const { deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Cloud delete installment error:', err);
+  }
+};
+
+/**
  * Real-time subscription to payment accounts collection in Firestore
  */
 export const subscribeToPaymentAccounts = (
@@ -217,24 +231,22 @@ export const deletePaymentAccountInCloud = async (id: string): Promise<void> => 
 };
 
 /**
- * Real-time subscription to members collection in Firestore
+ * Real-time subscription to projects collection in Firestore
  */
-export const subscribeToMembers = (
-  onData: (members: Member[]) => void,
+export const subscribeToProjects = (
+  onData: (projects: Project[]) => void,
   onError?: (error: Error) => void
 ) => {
   try {
-    const colRef = collection(db, MEMBERS_COLLECTION);
+    const colRef = collection(db, PROJECTS_COLLECTION);
     return onSnapshot(colRef, (snapshot) => {
-      if (!snapshot.empty) {
-        const items: Member[] = [];
-        snapshot.forEach((docSnap) => {
-          items.push(docSnap.data() as Member);
-        });
-        onData(items);
-      }
+      const items: Project[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push(docSnap.data() as Project);
+      });
+      onData(items);
     }, (err) => {
-      console.warn('Firestore members subscription error:', err);
+      console.warn('Firestore projects subscription error:', err);
       if (onError) onError(err);
     });
   } catch (err: any) {
@@ -242,3 +254,29 @@ export const subscribeToMembers = (
     return () => {};
   }
 };
+
+/**
+ * Save / Update Project in Firestore
+ */
+export const saveProjectToCloud = async (project: Project): Promise<void> => {
+  try {
+    const docRef = doc(db, PROJECTS_COLLECTION, project.id);
+    await setDoc(docRef, project, { merge: true });
+  } catch (err) {
+    console.warn('Cloud save project error:', err);
+  }
+};
+
+/**
+ * Delete Project in Firestore
+ */
+export const deleteProjectInCloud = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, PROJECTS_COLLECTION, id);
+    const { deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Cloud delete project error:', err);
+  }
+};
+

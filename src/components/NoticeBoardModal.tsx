@@ -15,6 +15,10 @@ interface Props {
   onClose: () => void;
   onAddNotice?: (notice: Notice) => void;
   onDeleteNotice?: (id: string) => void;
+  readNoticeIds?: string[];
+  setReadNoticeIds?: React.Dispatch<React.SetStateAction<string[]>>;
+  dismissedNoticeIds?: string[];
+  setDismissedNoticeIds?: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export const NoticeBoardModal: React.FC<Props> = ({ 
@@ -24,7 +28,11 @@ export const NoticeBoardModal: React.FC<Props> = ({
   notices,
   onClose,
   onAddNotice,
-  onDeleteNotice
+  onDeleteNotice,
+  readNoticeIds: externalReadIds,
+  setReadNoticeIds: externalSetReadIds,
+  dismissedNoticeIds: externalDismissedIds,
+  setDismissedNoticeIds: externalSetDismissedIds
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [titleBn, setTitleBn] = useState('');
@@ -35,8 +43,8 @@ export const NoticeBoardModal: React.FC<Props> = ({
   const [important, setImportant] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   
-  // Read and dismissed notices persistence
-  const [readNoticeIds, setReadNoticeIds] = useState<string[]>(() => {
+  // Internal fallback if not provided
+  const [internalReadIds, setInternalReadIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('nxr_read_notices');
       return saved ? JSON.parse(saved) : [];
@@ -45,7 +53,7 @@ export const NoticeBoardModal: React.FC<Props> = ({
     }
   });
 
-  const [dismissedNoticeIds, setDismissedNoticeIds] = useState<string[]>(() => {
+  const [internalDismissedIds, setInternalDismissedIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('nxr_dismissed_notices');
       return saved ? JSON.parse(saved) : [];
@@ -54,21 +62,11 @@ export const NoticeBoardModal: React.FC<Props> = ({
     }
   });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('nxr_read_notices', JSON.stringify(readNoticeIds));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [readNoticeIds]);
+  const readNoticeIds = externalReadIds !== undefined ? externalReadIds : internalReadIds;
+  const setReadNoticeIds = externalSetReadIds || setInternalReadIds;
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('nxr_dismissed_notices', JSON.stringify(dismissedNoticeIds));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [dismissedNoticeIds]);
+  const dismissedNoticeIds = externalDismissedIds !== undefined ? externalDismissedIds : internalDismissedIds;
+  const setDismissedNoticeIds = externalSetDismissedIds || setInternalDismissedIds;
 
   if (!isOpen) return null;
 
@@ -83,8 +81,15 @@ export const NoticeBoardModal: React.FC<Props> = ({
     setReadNoticeIds(allIds);
   };
 
+  const handleDismissAll = () => {
+    const allActiveIds = notices.filter(n => !n.isDeleted).map(n => n.id);
+    setDismissedNoticeIds(prev => Array.from(new Set([...prev, ...allActiveIds])));
+    setReadNoticeIds(prev => Array.from(new Set([...prev, ...allActiveIds])));
+  };
+
   const handleDismissNotice = (id: string) => {
     setDismissedNoticeIds(prev => [...prev, id]);
+    setReadNoticeIds(prev => [...prev, id]);
   };
 
   const restoreDismissedNotices = () => {
@@ -120,8 +125,8 @@ export const NoticeBoardModal: React.FC<Props> = ({
     setShowAddForm(false);
   };
 
-  // Filter out dismissed notices for user view
-  const activeNotices = notices.filter(n => !dismissedNoticeIds.includes(n.id));
+  // Filter out soft-deleted and dismissed notices for active user view
+  const activeNotices = notices.filter(n => !n.isDeleted && !dismissedNoticeIds.includes(n.id));
 
   const filteredNotices = activeNotices.filter(n => {
     if (filterCategory === 'unread') return !readNoticeIds.includes(n.id);
@@ -475,30 +480,29 @@ export const NoticeBoardModal: React.FC<Props> = ({
                         </span>
                       </button>
 
-                      {/* Delete / Dismiss from view button for shareholder */}
-                      <button
-                        onClick={() => handleDismissNotice(notice.id)}
-                        className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 transition"
-                        title={lang === 'bn' ? 'আমার ভিউ থেকে মুছে ফেলুন' : 'Delete from view'}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Admin Permanent Delete Notice Button */}
-                      {role === 'admin' && onDeleteNotice && (
+                      {/* Notice Action Buttons */}
+                      {onDeleteNotice && (
                         <button
                           onClick={() => {
-                            if (window.confirm(lang === 'bn' ? 'স্থায়ীভাবে এই নোটিশটি সিস্টেম থেকে মুছে ফেলতে চান?' : 'Permanently delete this notice from system?')) {
-                              onDeleteNotice(notice.id);
-                            }
+                            onDeleteNotice(notice.id);
+                            // Also ensure it's recorded as read so unread counter never lags
+                            setReadNoticeIds(prev => Array.from(new Set([...prev, notice.id])));
                           }}
-                          className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[10px] font-bold transition flex items-center gap-1"
-                          title="Admin Permanent Purge"
+                          className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[11px] font-semibold transition flex items-center gap-1 active:scale-95"
+                          title={lang === 'bn' ? 'ট্র্যাশ বিনে পাঠান' : 'Move to Trash Bin'}
                         >
-                          <Trash2 className="w-3 h-3" />
-                          <span className="hidden sm:inline">{lang === 'bn' ? 'স্থায়ী মুছুন' : 'Purge'}</span>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{lang === 'bn' ? 'মুছে ফেলুন' : 'Delete'}</span>
                         </button>
                       )}
+
+                      <button
+                        onClick={() => handleDismissNotice(notice.id)}
+                        className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition"
+                        title={lang === 'bn' ? 'তালিকা থেকে লুকান' : 'Dismiss'}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
 

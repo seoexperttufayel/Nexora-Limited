@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Member, Language, Role } from '../types';
+import { ImageCropModal } from './ImageCropModal';
 import { 
   Search, UserCheck, Shield, Phone, Mail, CheckCircle2, 
   ChevronRight, Globe, MapPin, Building, Edit3, Trash2, 
   UserPlus, RotateCcw, ShieldAlert, AlertTriangle, Check, X,
-  Users, KeyRound, Upload, Image as ImageIcon, CreditCard
+  Users, KeyRound, Upload, Image as ImageIcon, CreditCard, Camera
 } from 'lucide-react';
 
 interface Props {
@@ -41,6 +42,11 @@ export const GovernanceView: React.FC<Props> = ({
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [memberToPurge, setMemberToPurge] = useState<Member | null>(null);
+
+  // Crop Modal State
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string>('');
+  const [cropTarget, setCropTarget] = useState<'edit' | 'new'>('edit');
 
   // Member Password Reset State
   const [passwordResetMember, setPasswordResetMember] = useState<Member | null>(null);
@@ -104,21 +110,29 @@ export const GovernanceView: React.FC<Props> = ({
 
   const totalActiveShares = activeMembers.reduce((acc, curr) => acc + curr.share, 0);
 
-  // File upload handler for profile picture
-  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>, isNew: boolean = false) => {
+  // File upload handler for profile picture (with crop modal integration)
+  const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>, target: 'edit' | 'new') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      if (isNew) {
-        setNewMemberForm(prev => ({ ...prev, avatarUrl: base64String }));
-      } else if (editingMember) {
-        setEditingMember(prev => prev ? { ...prev, avatarUrl: base64String } : null);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setCropTarget(target);
+        setCropImageSrc(reader.result);
+        setCropModalOpen(true);
       }
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCropComplete = (croppedDataUrl: string) => {
+    if (cropTarget === 'edit') {
+      setEditingMember(prev => prev ? { ...prev, avatarUrl: croppedDataUrl } : null);
+    } else {
+      setNewMemberForm(prev => ({ ...prev, avatarUrl: croppedDataUrl }));
+    }
   };
 
   // Save Member Edit Handler
@@ -482,8 +496,42 @@ export const GovernanceView: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* ALL MEMBERS / MANAGEMENT LIST */}
-      {filterGroup !== 'advisor' && managementList.length > 0 && (
+      {/* 1. ALL FOUNDER MEMBERS VIEW (WHEN filterGroup === 'all') */}
+      {filterGroup === 'all' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">
+                  {lang === 'bn' ? 'সকল প্রতিষ্ঠাতা সদস্য ও শেয়ারহোল্ডারবৃন্দ (NXR-001 হতে NXR-013)' : 'All Founder Members & Shareholders (NXR-001 to NXR-013)'}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {lang === 'bn' ? '১৩ জন প্রতিষ্ঠাতা অংশীদারের পূর্ণাঙ্গ তালিকা ও ইকুইটি পরিচিতি' : 'Complete roster of 13 founder shareholders & equity governance profile'}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              {filteredMembers.length} Members
+            </span>
+          </div>
+
+          {filteredMembers.length === 0 ? (
+            <div className="p-12 text-center rounded-2xl bg-slate-900 border border-slate-800 text-slate-400">
+              <p className="text-sm font-semibold">{lang === 'bn' ? 'কোনো সদস্য পাওয়া যায়নি' : 'No shareholders match your search'}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {filteredMembers.map((member) => renderMemberCard(member))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 2. MANAGEMENT COMMITTEE VIEW (WHEN filterGroup === 'management') */}
+      {filterGroup === 'management' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center space-x-2.5">
@@ -504,14 +552,20 @@ export const GovernanceView: React.FC<Props> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {managementList.map((member) => renderMemberCard(member))}
-          </div>
+          {managementList.length === 0 ? (
+            <div className="p-12 text-center rounded-2xl bg-slate-900 border border-slate-800 text-slate-400">
+              <p className="text-sm font-semibold">{lang === 'bn' ? 'কোনো সদস্য পাওয়া যায়নি' : 'No management committee members match your search'}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {managementList.map((member) => renderMemberCard(member))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* ADVISORY COUNCIL */}
-      {filterGroup !== 'management' && advisorList.length > 0 && (
+      {/* 3. ADVISORY COUNCIL VIEW (WHEN filterGroup === 'advisor') */}
+      {filterGroup === 'advisor' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center space-x-2.5">
@@ -532,9 +586,15 @@ export const GovernanceView: React.FC<Props> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {advisorList.map((member) => renderMemberCard(member))}
-          </div>
+          {advisorList.length === 0 ? (
+            <div className="p-12 text-center rounded-2xl bg-slate-900 border border-slate-800 text-slate-400">
+              <p className="text-sm font-semibold">{lang === 'bn' ? 'কোনো সদস্য পাওয়া যায়নি' : 'No advisory council members match your search'}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {advisorList.map((member) => renderMemberCard(member))}
+            </div>
+          )}
         </div>
       )}
 
@@ -566,29 +626,29 @@ export const GovernanceView: React.FC<Props> = ({
                     <img 
                       src={editingMember.avatarUrl} 
                       alt={editingMember.name} 
-                      className="w-12 h-12 rounded-xl object-cover border border-emerald-500/50 shadow-md"
+                      className="w-12 h-12 rounded-xl object-cover aspect-square border border-emerald-500/50 shadow-md shrink-0"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center font-bold text-emerald-400 text-sm">
+                    <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center font-bold text-emerald-400 text-sm shrink-0">
                       {editingMember.name.charAt(0)}
                     </div>
                   )}
                   <div>
                     <span className="font-semibold text-white block">{lang === 'bn' ? 'প্রোফাইল ছবি (Profile Picture)' : 'Profile Photo'}</span>
-                    <span className="text-[11px] text-slate-400">{lang === 'bn' ? 'ছবি আপলোড করুন বা লিংক দিন' : 'Upload photo or image file'}</span>
+                    <span className="text-[11px] text-slate-400">{lang === 'bn' ? 'ছবি আপলোড ও ক্রপ করুন' : 'Upload and crop photo'}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1">
-                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{lang === 'bn' ? 'ছবি পরিবর্তন' : 'Upload Photo'}</span>
+                  <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 active:scale-95">
+                    <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === 'bn' ? 'ছবি নির্বাচন ও ক্রপ' : 'Select & Crop Photo'}</span>
                     <input 
                       type="file" 
                       accept="image/*" 
                       className="hidden" 
-                      onChange={(e) => handleAvatarFileUpload(e, false)} 
+                      onChange={(e) => handleAvatarFileSelect(e, 'edit')} 
                     />
                   </label>
                   {editingMember.avatarUrl && (
@@ -864,6 +924,50 @@ export const GovernanceView: React.FC<Props> = ({
 
             <form onSubmit={handleCreateMember} className="space-y-4 text-xs sm:text-sm">
               
+              {/* Profile Photo Upload / Avatar for New Member */}
+              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  {newMemberForm.avatarUrl ? (
+                    <img 
+                      src={newMemberForm.avatarUrl} 
+                      alt="New Member" 
+                      className="w-12 h-12 rounded-xl object-cover aspect-square border border-emerald-500/50 shadow-md shrink-0"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center font-bold text-emerald-400 text-sm shrink-0">
+                      <Camera className="w-5 h-5 text-emerald-400" />
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-semibold text-white block">{lang === 'bn' ? 'প্রোফাইল ছবি (Profile Picture)' : 'Profile Photo'}</span>
+                    <span className="text-[11px] text-slate-400">{lang === 'bn' ? 'ছবি নির্বাচন ও ক্রপ করুন' : 'Select and crop photo'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 active:scale-95">
+                    <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{lang === 'bn' ? 'ছবি নির্বাচন ও ক্রপ' : 'Select & Crop'}</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={(e) => handleAvatarFileSelect(e, 'new')} 
+                    />
+                  </label>
+                  {newMemberForm.avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setNewMemberForm({...newMemberForm, avatarUrl: ''})}
+                      className="text-[11px] text-rose-400 hover:underline"
+                    >
+                      {lang === 'bn' ? 'মুছুন' : 'Remove'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-400 text-xs mb-1 font-semibold">Member ID</label>
@@ -1065,6 +1169,19 @@ export const GovernanceView: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* Crop & Adjustment Modal */}
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        imageSrc={cropImageSrc}
+        lang={lang}
+        title={lang === 'bn' ? 'সদস্যের ছবি ক্রপ ও এডজাস্ট করুন' : 'Crop & Adjust Shareholder Photo'}
+        onClose={() => {
+          setCropModalOpen(false);
+          setCropImageSrc('');
+        }}
+        onCropComplete={handleCropComplete}
+      />
 
     </div>
   );
