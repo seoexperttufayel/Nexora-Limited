@@ -63,19 +63,6 @@ export const MemberDepositView: React.FC<Props> = ({
     }
   }, [activeAccounts, lang]);
 
-  // Live ticking clock & formatted live date
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
-  const [liveDateFormatted, setLiveDateFormatted] = useState(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const live = new Date();
-      setCurrentTime(live.toLocaleTimeString());
-      setLiveDateFormatted(live.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Base monthly installment (1% share = ৳1,000)
   const baseMonthlyAmount = (member.share || 1) * 1000;
 
@@ -158,23 +145,13 @@ export const MemberDepositView: React.FC<Props> = ({
           </p>
         </div>
 
-        {/* Real-time timestamp & share equity badge */}
+        {/* Member equity badge */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-slate-950 border border-slate-800 px-4 py-2.5 rounded-2xl text-right">
-            <span className="text-[10px] text-slate-400 block uppercase font-semibold flex items-center gap-1 justify-end">
-              <Timer className="w-3.5 h-3.5 text-emerald-400" />
-              {lang === 'bn' ? 'লাইভ সময়' : 'Live Clock'}
-            </span>
-            <span className="text-xs font-mono font-bold text-slate-200">
-              {currentTime}
-            </span>
-          </div>
-
-          <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-2xl text-right">
+          <div className="bg-emerald-500/10 border border-emerald-500/20 px-5 py-3 rounded-2xl text-right">
             <span className="text-[10px] text-slate-400 block uppercase font-semibold">
               {lang === 'bn' ? 'আপনার শেয়ার অংশ' : 'Your Equity Share'}
             </span>
-            <span className="text-base font-black text-emerald-400 font-mono">
+            <span className="text-lg font-black text-emerald-400 font-mono">
               {member.share}% (৳{baseMonthlyAmount.toLocaleString()}/মাস)
             </span>
           </div>

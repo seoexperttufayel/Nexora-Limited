@@ -56,7 +56,7 @@ export const FinancialLedgerView: React.FC<Props> = ({
   const [formType, setFormType] = useState<'credit' | 'debit'>('debit');
   const [formTitle, setFormTitle] = useState('');
   const [formTitleBn, setFormTitleBn] = useState('');
-  const [formCategory, setFormCategory] = useState('Office & Admin (দাপ্তরিক খরচ)');
+  const [formCategory, setFormCategory] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formMethod, setFormMethod] = useState('Islami Bank Bangladesh PLC');
@@ -183,6 +183,7 @@ export const FinancialLedgerView: React.FC<Props> = ({
     // Reset form
     setFormTitle('');
     setFormTitleBn('');
+    setFormCategory('');
     setFormAmount('');
     setFormNotes('');
     setFormAccountNo('2050-1234-5678-9000');
@@ -942,10 +943,7 @@ export const FinancialLedgerView: React.FC<Props> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormType('credit');
-                      setFormCategory('Share Capital (মূলধন জমা)');
-                    }}
+                    onClick={() => setFormType('credit')}
                     className={`py-3 px-4 rounded-2xl font-bold flex items-center justify-center space-x-2 transition ${
                       formType === 'credit'
                         ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-400'
@@ -958,10 +956,7 @@ export const FinancialLedgerView: React.FC<Props> = ({
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormType('debit');
-                      setFormCategory('Office & Admin (দাপ্তরিক খরচ)');
-                    }}
+                    onClick={() => setFormType('debit')}
                     className={`py-3 px-4 rounded-2xl font-bold flex items-center justify-center space-x-2 transition ${
                       formType === 'debit'
                         ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20 ring-2 ring-rose-400'
@@ -1008,34 +1003,33 @@ export const FinancialLedgerView: React.FC<Props> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">
-                    {lang === 'bn' ? 'হিসাবের খাত (Category) *' : 'Account Category *'}
+                    {lang === 'bn' ? 'হিসাবের খাত / ক্যাটাগরি (কাস্টম টাইপ করুন) *' : 'Account Category (Type Custom) *'}
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    required
+                    list="ledger-category-suggestions"
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-emerald-500"
-                  >
-                    {formType === 'credit' ? (
-                      <>
-                        <option value="Share Capital (মূলধন জমা)">Share Capital (মূলধন জমা)</option>
-                        <option value="Monthly Installments (মাসিক কিস্তি)">Monthly Installments (মাসিক কিস্তি)</option>
-                        <option value="Halal Business Revenue (ব্যবসায়িক আয়)">Halal Business Revenue (ব্যবসায়িক আয়)</option>
-                        <option value="Project Returns / Dividends (প্রকল্প লভ্যাংশ)">Project Returns / Dividends (প্রকল্প লভ্যাংশ)</option>
-                        <option value="Other Incomes (অন্যান্য আয়)">Other Incomes (অন্যান্য আয়)</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="Office & Admin (দাপ্তরিক খরচ)">Office & Admin (দাপ্তরিক খরচ)</option>
-                        <option value="Legal & Compliance (আইনি ও নিবন্ধন)">Legal & Compliance (আইনি ও নিবন্ধন)</option>
-                        <option value="Project Investment (প্রকল্প বিনিয়োগ ও সমীক্ষা)">Project Investment (প্রকল্প বিনিয়োগ ও সমীক্ষা)</option>
-                        <option value="IT & Infrastructure (আইটি ও সফটওয়্যার)">IT & Infrastructure (আইটি ও সফটওয়্যার)</option>
-                        <option value="Stationery & Printing (মুদ্রণ ও স্ট্যাম্প)">Stationery & Printing (মুদ্রণ ও স্ট্যাম্প)</option>
-                        <option value="Meeting & AGM (সভা ও আতিথেয়তা)">Meeting & AGM (সভা ও আতিথেয়তা)</option>
-                        <option value="Travel & Logistics (যাতায়াত ও পরিদর্শন)">Travel & Logistics (যাতায়াত ও পরিদর্শন)</option>
-                        <option value="Miscellaneous (বিবিধ খরচ)">Miscellaneous (বিবিধ খরচ)</option>
-                      </>
-                    )}
-                  </select>
+                    placeholder={lang === 'bn' ? 'যেমন: অফিস ভাড়া, আইনি ফি, মুদ্রণ বা যে কোনো খাত...' : 'e.g. Office Rent, Legal, Share Capital...'}
+                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs"
+                  />
+                  <datalist id="ledger-category-suggestions">
+                    {categories.map((cat, idx) => (
+                      <option key={idx} value={cat} />
+                    ))}
+                    <option value="Share Capital (মূলধন জমা)" />
+                    <option value="Monthly Installments (মাসিক কিস্তি)" />
+                    <option value="Office & Admin (দাপ্তরিক খরচ)" />
+                    <option value="Legal & Compliance (আইনি ও নিবন্ধন)" />
+                    <option value="Project Investment (প্রকল্প বিনিয়োগ ও সমীক্ষা)" />
+                    <option value="IT & Infrastructure (আইটি ও সফটওয়্যার)" />
+                    <option value="Stationery & Printing (মুদ্রণ ও স্ট্যাম্প)" />
+                    <option value="Meeting & AGM (সভা ও আতিথেয়তা)" />
+                    <option value="Travel & Logistics (যাতায়াত ও পরিদর্শন)" />
+                    <option value="Halal Business Revenue (ব্যবসায়িক আয়)" />
+                    <option value="Miscellaneous (বিবিধ খরচ)" />
+                  </datalist>
                 </div>
 
                 <div>

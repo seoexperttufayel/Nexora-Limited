@@ -8,9 +8,10 @@ import {
 
 interface Props {
   lang: Language;
+  memberCount?: number;
 }
 
-export const AboutView: React.FC<Props> = ({ lang }) => {
+export const AboutView: React.FC<Props> = ({ lang, memberCount = 13 }) => {
   return (
     <div className="space-y-12 pb-12 animate-in fade-in duration-300">
       
@@ -28,8 +29,8 @@ export const AboutView: React.FC<Props> = ({ lang }) => {
 
           <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
             {lang === 'bn'
-              ? 'নেক্সোরা লিমিটেড একটি প্রতিশ্রুতিশীল ও স্বচ্ছ যৌথ বিনিয়োগ প্রতিষ্ঠান, যা ১৩ জন স্বপ্নদর্শী উদ্যোক্তা ও পরিচালকের যৌথ প্রচেষ্টায় প্রতিষ্ঠিত হয়েছে। আমরা সুদমুক্ত হালাল বিনিয়োগের মাধ্যমে টেকসই রিয়েল এস্টেট, এগ্রো-ফার্মিং ও সাপ্লাই চেইন ব্যবসা পরিচালনা করি।'
-              : 'Nexora Limited is a progressive and transparent joint investment enterprise founded by 13 forward-thinking entrepreneurs. We specialize in Shariah-compliant real estate, agro-ventures, and logistics businesses with absolute financial transparency.'}
+              ? `নেক্সোরা লিমিটেড একটি প্রতিশ্রুতিশীল ও স্বচ্ছ যৌথ বিনিয়োগ প্রতিষ্ঠান, যা ${memberCount} জন স্বপ্নদর্শী উদ্যোক্তা ও পরিচালকের যৌথ প্রচেষ্টায় প্রতিষ্ঠিত হয়েছে। আমরা সুদমুক্ত হালাল বিনিয়োগের মাধ্যমে টেকসই রিয়েল এস্টেট, এগ্রো-ফার্মিং ও সাপ্লাই চেইন ব্যবসা পরিচালনা করি।`
+              : `Nexora Limited is a progressive and transparent joint investment enterprise founded by ${memberCount} forward-thinking entrepreneurs. We specialize in Shariah-compliant real estate, agro-ventures, and logistics businesses with absolute financial transparency.`}
           </p>
         </div>
       </section>

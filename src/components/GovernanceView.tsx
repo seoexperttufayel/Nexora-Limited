@@ -35,13 +35,11 @@ export const GovernanceView: React.FC<Props> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGroup, setFilterGroup] = useState<'all' | 'management' | 'advisor'>('all');
-  const [viewTrashed, setViewTrashed] = useState(false);
 
   // Admin Modal States
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
-  const [memberToPurge, setMemberToPurge] = useState<Member | null>(null);
 
   // Crop Modal State
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -78,9 +76,7 @@ export const GovernanceView: React.FC<Props> = ({
   });
 
   const activeMembers = [...members.filter(m => !m.isDeleted)].sort(sortMembersById);
-  const trashedMembers = [...members.filter(m => m.isDeleted)].sort(sortMembersById);
-
-  const displayList = viewTrashed ? trashedMembers : activeMembers;
+  const displayList = activeMembers;
 
   const filteredMembers = displayList.filter((m) => {
     const matchesSearch =
@@ -291,7 +287,7 @@ export const GovernanceView: React.FC<Props> = ({
       </div>
 
       <div className="space-y-1.5 pt-2">
-        {role === 'admin' && !viewTrashed && (
+        {role === 'admin' && (
           <div className="flex items-center gap-1.5">
             {onUpdateMember && (
               <button
@@ -325,29 +321,6 @@ export const GovernanceView: React.FC<Props> = ({
             )}
           </div>
         )}
-
-        {role === 'admin' && viewTrashed && (
-          <div className="flex items-center gap-1.5">
-            {onRestoreMember && (
-              <button
-                onClick={() => onRestoreMember(member.id)}
-                className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition flex items-center justify-center gap-1"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>{lang === 'bn' ? 'পুনরুদ্ধার' : 'Restore'}</span>
-              </button>
-            )}
-            {onPermanentDeleteMember && (
-              <button
-                onClick={() => setMemberToPurge(member)}
-                className="p-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold transition"
-                title="Permanent Purge"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -363,12 +336,12 @@ export const GovernanceView: React.FC<Props> = ({
             <span>{lang === 'bn' ? 'পরিচালনা পরিষদ ও শেয়ারহোল্ডার তালিকা' : 'Governance & Founder Shareholders'}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-            {lang === 'bn' ? '১৩ জন প্রতিষ্ঠাতা অংশীদার ও পরিচালনা পরিষদ' : '13 Founder Members & Governance Council'}
+            {lang === 'bn' ? `${activeMembers.length} জন প্রতিষ্ঠাতা অংশীদার ও পরিচালনা পরিষদ` : `${activeMembers.length} Founder Members & Governance Council`}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
             {lang === 'bn' 
-              ? 'নেক্সোরা লিমিটেডের ব্যবস্থাপনা কমিটি (সিলেট, বাংলাদেশ) ও উপদেষ্টা পরিষদ (প্রবাস) — ক্রমিক NXR-001 থেকে NXR-013' 
-              : 'Management Committee (Sylhet, BD) and Advisory Council (Overseas) — Sequential NXR-001 to NXR-013'}
+              ? `নেক্সোরা লিমিটেডের ব্যবস্থাপনা কমিটি (সিলেট, বাংলাদেশ) ও উপদেষ্টা পরিষদ (প্রবাস) — মোট ${activeMembers.length} জন সক্রিয় অংশীদার` 
+              : `Management Committee (Sylhet, BD) and Advisory Council (Overseas) — ${activeMembers.length} Active Partners`}
           </p>
         </div>
 
@@ -429,20 +402,6 @@ export const GovernanceView: React.FC<Props> = ({
               >
                 <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
                 <span className="hidden sm:inline">{lang === 'bn' ? 'ডিফল্ট ১৩ সদস্য রিস্টোর' : 'Restore 13 Founders'}</span>
-              </button>
-            )}
-
-            {trashedMembers.length > 0 && (
-              <button
-                onClick={() => setViewTrashed(!viewTrashed)}
-                className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition border ${
-                  viewTrashed 
-                    ? 'bg-rose-500 text-white border-rose-500'
-                    : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
-                }`}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{viewTrashed ? (lang === 'bn' ? 'সক্রিয় সদস্যবৃন্দ দেখুন' : 'View Active') : `${lang === 'bn' ? 'ট্র্যাশ বিন' : 'Trash Bin'} (${trashedMembers.length})`}</span>
               </button>
             )}
           </div>
@@ -1121,49 +1080,6 @@ export const GovernanceView: React.FC<Props> = ({
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{lang === 'bn' ? 'ট্র্যাশে সরান' : 'Move to Trash'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PERMANENT PURGE MEMBER MODAL */}
-      {memberToPurge && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative text-slate-100">
-            <button
-              onClick={() => setMemberToPurge(null)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 text-rose-500 pr-6">
-              <AlertTriangle className="w-5 h-5" />
-              <span>{lang === 'bn' ? 'স্থায়ীভাবে মুছে ফেলার সতর্কতা' : 'Permanent Purge Member'}</span>
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {lang === 'bn' 
-                ? `সতর্কতা: ${memberToPurge.name} (${memberToPurge.id})-এর প্রোফাইল স্থায়ীভাবে সিস্টেম থেকে মুছে যাবে। আপনি কি নিশ্চিত?` 
-                : `Warning: ${memberToPurge.name} (${memberToPurge.id}) will be permanently deleted and cannot be recovered.`}
-            </p>
-            <div className="flex justify-end space-x-3 pt-2">
-              <button
-                onClick={() => setMemberToPurge(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-semibold transition"
-              >
-                {lang === 'bn' ? 'বাতিল' : 'Cancel'}
-              </button>
-              <button
-                onClick={() => {
-                  if (onPermanentDeleteMember && memberToPurge) {
-                    onPermanentDeleteMember(memberToPurge.id);
-                  }
-                  setMemberToPurge(null);
-                }}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{lang === 'bn' ? 'স্থায়ী মুছুন' : 'Permanent Purge'}</span>
               </button>
             </div>
           </div>

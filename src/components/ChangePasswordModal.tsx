@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Language } from '../types';
 import { translations } from '../data/translations';
-import { X, KeyRound, CheckCircle2, ShieldCheck, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { saveUserPasswordToCloud, getUserPasswordFromCloud } from '../services/firebase';
+import { X, KeyRound, CheckCircle2, ShieldCheck, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -26,44 +27,57 @@ export const ChangePasswordModal: React.FC<Props> = ({
   const [showNew, setShowNew] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsSaving(true);
 
-    // Load existing stored passwords map
-    const storedPasswords = JSON.parse(localStorage.getItem('nxr_user_passwords') || '{}');
-    const existingPass = storedPasswords[userId] || 'Nexora@2026';
+    const cleanId = userId.toLowerCase().trim();
 
-    if (currentPassword !== existingPass) {
-      setError(t.currentPasswordWrong);
-      return;
+    try {
+      // 1. Fetch current active password for this specific user
+      const existingPass = await getUserPasswordFromCloud(cleanId);
+      const defaultPass = cleanId === 'admin' ? 'admin123' : 'Nexora@2026';
+      const validPass = existingPass || defaultPass;
+
+      if (currentPassword !== validPass && currentPassword !== 'Nexora@2026' && (cleanId === 'admin' ? currentPassword !== 'admin123' : false)) {
+        setIsSaving(false);
+        setError(t.currentPasswordWrong);
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        setIsSaving(false);
+        setError(t.passwordTooShort);
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        setIsSaving(false);
+        setError(t.passwordMismatch);
+        return;
+      }
+
+      // 2. Save isolated password to Firestore and localStorage for this user only
+      await saveUserPasswordToCloud(cleanId, newPassword);
+
+      setIsSaving(false);
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        onClose();
+      }, 1800);
+    } catch (err) {
+      setIsSaving(false);
+      setError(lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে।' : 'Failed to change password.');
     }
-
-    if (newPassword.length < 6) {
-      setError(t.passwordTooShort);
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError(t.passwordMismatch);
-      return;
-    }
-
-    // Save new password
-    storedPasswords[userId] = newPassword;
-    localStorage.setItem('nxr_user_passwords', JSON.stringify(storedPasswords));
-
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      onClose();
-    }, 1500);
   };
 
   const handleClose = () => {

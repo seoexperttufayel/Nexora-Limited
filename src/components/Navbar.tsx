@@ -5,7 +5,7 @@ import { NexoraLogo } from './NexoraLogo';
 import { 
   ShieldCheck, Globe, Lock, LogOut, UserCheck, 
   Menu, X, Sparkles, Building2, Bell, FileText, CheckCircle2,
-  KeyRound, ChevronRight, User, Landmark, Trash2
+  KeyRound, ChevronRight, User, Landmark, Trash2, BookOpen
 } from 'lucide-react';
 
 interface Props {
@@ -52,7 +52,7 @@ export const Navbar: React.FC<Props> = ({
   };
 
   return (
-    <header className="bg-slate-900/98 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 shadow-2xl transition-none will-change-transform print:hidden w-full max-w-full overflow-x-hidden">
+    <header className="bg-slate-900/98 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 shadow-2xl print:hidden w-full max-w-full overflow-x-hidden">
       
       {/* TOP ANNOUNCEMENT & SHARIAH BAR */}
       <div className="bg-emerald-950/40 border-b border-emerald-500/10 px-3 sm:px-4 py-1.5 text-xs text-slate-300">
@@ -310,6 +310,19 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.projects}
               </button>
+
+              {/* 7. গঠনতন্ত্র (Constitution) */}
+              <button
+                onClick={() => setActiveTab('constitution')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
+                  activeTab === 'constitution'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{t.constitution}</span>
+              </button>
             </>
           )}
 
@@ -393,6 +406,19 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.projects}
               </button>
+
+              {/* 7. গঠনতন্ত্র (Constitution) */}
+              <button
+                onClick={() => setActiveTab('constitution')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
+                  activeTab === 'constitution'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{t.constitution}</span>
+              </button>
             </>
           )}
 
@@ -454,7 +480,11 @@ export const Navbar: React.FC<Props> = ({
                   <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
-                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5 col-span-2 sm:col-span-1">
+                  <button onClick={() => handleNavClick('constitution')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-emerald-400 font-medium flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>{t.constitution}</span>
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5">
                     <KeyRound className="w-3.5 h-3.5" />
                     <span>{t.changePassword}</span>
                   </button>
@@ -467,6 +497,10 @@ export const Navbar: React.FC<Props> = ({
                   <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
+                  <button onClick={() => handleNavClick('constitution')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-emerald-400 font-medium flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>{t.constitution}</span>
+                  </button>
                   {onOpenTrash && (
                     <button onClick={() => { setMenuOpen(false); onOpenTrash(); }} className="p-3 text-left bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl font-medium flex items-center gap-1.5">
                       <Trash2 className="w-3.5 h-3.5" />

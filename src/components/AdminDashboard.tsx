@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Member, Installment, Language, LedgerTransaction, PaymentAccountConfig } from '../types';
+import { Member, Installment, Language, LedgerTransaction, PaymentAccountConfig, AdminProfile } from '../types';
 import { translations } from '../data/translations';
 import { AdminPaymentAccountsModal } from './AdminPaymentAccountsModal';
 import { 
   ShieldCheck, Wallet, Users, Clock, CheckCircle2, 
   XCircle, Printer, FileText, Check, X,
   FileSpreadsheet, TrendingUp, Building2,
-  Calendar, CreditCard, Landmark, ArrowUpRight, ArrowDownLeft
+  Calendar, CreditCard, Landmark, ArrowUpRight, ArrowDownLeft, UserCheck, UserCog
 } from 'lucide-react';
 
 interface Props {
@@ -20,6 +20,8 @@ interface Props {
   onAddLedgerTransaction?: (txn: LedgerTransaction) => void;
   onDeleteLedgerTransaction?: (id: string) => void;
   paymentAccounts?: PaymentAccountConfig[];
+  adminProfile?: AdminProfile;
+  onOpenAdminProfile?: () => void;
   onUpdatePaymentAccount?: (acc: PaymentAccountConfig) => void;
   onAddPaymentAccount?: (acc: PaymentAccountConfig) => void;
   onDeletePaymentAccount?: (id: string) => void;
@@ -36,6 +38,8 @@ export const AdminDashboard: React.FC<Props> = ({
   onViewReceipt,
   ledgerTransactions = [],
   paymentAccounts = [],
+  adminProfile,
+  onOpenAdminProfile,
   onUpdatePaymentAccount,
   onAddPaymentAccount,
   onDeletePaymentAccount,
@@ -138,6 +142,17 @@ export const AdminDashboard: React.FC<Props> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 relative z-10">
+          {onOpenAdminProfile && (
+            <button
+              onClick={onOpenAdminProfile}
+              className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 text-xs sm:text-sm font-semibold transition shadow-md shadow-emerald-500/10"
+              title="Manage Admin Profile & Credentials"
+            >
+              <UserCog className="w-4 h-4 text-emerald-400" />
+              <span>{lang === 'bn' ? 'অ্যাডমিন প্রোফাইল' : 'Admin Profile'}</span>
+            </button>
+          )}
+
           {onNavigateToLedger && (
             <button
               onClick={onNavigateToLedger}

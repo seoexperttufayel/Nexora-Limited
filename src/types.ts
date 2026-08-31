@@ -168,12 +168,23 @@ export interface CompanyPost {
   tagsBn: string[];
 }
 
-export interface ExpenseRecord {
+export interface AdminProfile {
   id: string;
-  category: string;
-  title: string;
-  amount: number;
-  date: string;
-  approvedBy: string;
+  name: string;
+  nameBn: string;
+  email: string;
+  phone: string;
+  nid?: string;
+  designationEn: string;
+  designationBn: string;
+  role: 'admin';
+  avatarUrl?: string;
+  bioEn?: string;
+  bioBn?: string;
+  updatedAt?: string;
+}
+
+export interface LanguageProps {
+  lang: Language;
 }
 
