@@ -100,6 +100,29 @@ export const AdminDepositView: React.FC<Props> = ({
   const isFuture = fineResult.isFuture;
   const totalLockedAmount = lockedBaseAmount + calculatedLateFee;
 
+  // Real-time ticking clock
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const [currentDateString, setCurrentDateString] = useState(new Date().toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const live = new Date();
+      setCurrentTime(live.toLocaleTimeString());
+      setCurrentDateString(live.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lang]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentSelectedMember) return;
@@ -162,7 +185,7 @@ export const AdminDepositView: React.FC<Props> = ({
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-300">
       
-      {/* HEADER (CLEAN & WITHOUT LIVE CLOCK) */}
+      {/* HEADER WITH REAL-TIME CLOCK */}
       <div className="p-8 sm:p-10 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
         <div>
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold mb-3">
@@ -179,17 +202,18 @@ export const AdminDepositView: React.FC<Props> = ({
           </p>
         </div>
 
-        {/* Selected Member Equity / Clause 4 Indicator Badge */}
-        <div className="bg-slate-950 px-5 py-3.5 rounded-2xl border border-slate-800 text-right shrink-0">
-          <span className="text-[10px] text-slate-400 block uppercase font-semibold">
-            {lang === 'bn' ? 'নির্ধারিত মাসিক কিস্তি হার' : 'Locked Monthly Installment'}
-          </span>
-          <p className="text-xl font-black text-emerald-400 font-mono tracking-tight mt-0.5">
-            ৳ {lockedBaseAmount.toLocaleString()}/মাস
+        {/* REAL-TIME TIMESTAMP BADGE (DUPLICATE TRASH BUTTON REMOVED) */}
+        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-right shrink-0">
+          <div className="flex items-center justify-end gap-1.5 text-[10px] text-emerald-400 uppercase font-bold mb-1">
+            <Timer className="w-3.5 h-3.5 animate-pulse" />
+            <span>{lang === 'bn' ? 'সিস্টেম রিয়েল-টাইম' : 'System Real-Time'}</span>
+          </div>
+          <p className="text-2xl font-black text-white font-mono tracking-tight">
+            {currentTime}
           </p>
-          <span className="text-[11px] text-slate-400 block mt-0.5">
-            {currentSelectedMember.name} • {currentSelectedMember.share}% {lang === 'bn' ? 'শেয়ার' : 'Share'}
-          </span>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {currentDateString}
+          </p>
         </div>
       </div>
 

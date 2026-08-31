@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Language, Role, Member, Installment, Project, Notice, LedgerTransaction, PaymentAccountConfig, AdminProfile } from './types';
 import { FOUNDER_MEMBERS, INITIAL_INSTALLMENTS, PROJECTS, NOTICES, COMPANY_INFO, DEFAULT_ADMIN_PROFILE } from './data/initialData';
 import { INITIAL_LEDGER_TRANSACTIONS } from './data/initialLedger';
@@ -394,7 +394,7 @@ export default function App() {
   const [showAdminProfileModal, setShowAdminProfileModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Installment | null>(null);
 
-  // 6. Optimized LocalStorage Persistence (Debounced to prevent UI thread lag)
+  // 6. LocalStorage Persistence Sync Backup
   useEffect(() => {
     safeSetLocalStorage('nxr_lang', lang);
   }, [lang]);
@@ -416,45 +416,27 @@ export default function App() {
   }, [activeTab]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      safeSetLocalStorage('nxr_members_v4', JSON.stringify(members));
-    }, 150);
-    return () => clearTimeout(timer);
+    safeSetLocalStorage('nxr_members_v4', JSON.stringify(members));
   }, [members]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      safeSetLocalStorage('nxr_installments_v4', JSON.stringify(installments));
-    }, 150);
-    return () => clearTimeout(timer);
+    safeSetLocalStorage('nxr_installments_v4', JSON.stringify(installments));
   }, [installments]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      safeSetLocalStorage('nxr_projects_v2', JSON.stringify(projects));
-    }, 150);
-    return () => clearTimeout(timer);
+    safeSetLocalStorage('nxr_projects_v2', JSON.stringify(projects));
   }, [projects]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      safeSetLocalStorage('nxr_notices_v1', JSON.stringify(notices));
-    }, 150);
-    return () => clearTimeout(timer);
+    safeSetLocalStorage('nxr_notices_v1', JSON.stringify(notices));
   }, [notices]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      safeSetLocalStorage('nxr_ledger_transactions_v2', JSON.stringify(ledgerTransactions));
-    }, 150);
-    return () => clearTimeout(timer);
+    safeSetLocalStorage('nxr_ledger_transactions_v2', JSON.stringify(ledgerTransactions));
   }, [ledgerTransactions]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      safeSetLocalStorage('nxr_payment_accounts_v1', JSON.stringify(paymentAccounts));
-    }, 150);
-    return () => clearTimeout(timer);
+    safeSetLocalStorage('nxr_payment_accounts_v1', JSON.stringify(paymentAccounts));
   }, [paymentAccounts]);
 
   // Ledger Handlers
@@ -1036,26 +1018,15 @@ export default function App() {
     }
   };
 
-  const pendingCount = useMemo(() => {
-    return installments.filter(i => !i.isDeleted && i.status === 'pending').length;
-  }, [installments]);
+  const pendingCount = installments.filter(i => !i.isDeleted && i.status === 'pending').length;
+  const trashedCount = 
+    installments.filter(i => i.isDeleted).length + 
+    members.filter(m => m.isDeleted).length + 
+    ledgerTransactions.filter(t => t.isDeleted).length +
+    notices.filter(n => n.isDeleted).length;
 
-  const trashedCount = useMemo(() => {
-    return (
-      installments.filter(i => i.isDeleted).length +
-      members.filter(m => m.isDeleted).length +
-      ledgerTransactions.filter(t => t.isDeleted).length +
-      notices.filter(n => n.isDeleted).length
-    );
-  }, [installments, members, ledgerTransactions, notices]);
-
-  const activeNotices = useMemo(() => {
-    return notices.filter(n => !n.isDeleted && !dismissedNoticeIds.includes(n.id));
-  }, [notices, dismissedNoticeIds]);
-
-  const unreadNoticeCount = useMemo(() => {
-    return activeNotices.filter(n => !readNoticeIds.includes(n.id)).length;
-  }, [activeNotices, readNoticeIds]);
+  const activeNotices = notices.filter(n => !n.isDeleted && !dismissedNoticeIds.includes(n.id));
+  const unreadNoticeCount = activeNotices.filter(n => !readNoticeIds.includes(n.id)).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950 flex flex-col justify-between">
@@ -1140,25 +1111,13 @@ export default function App() {
             />
           )}
 
-          {/* Constitution (গঠনতন্ত্র) View (Protected for Authenticated Members & Admins Only) */}
-          {activeTab === 'constitution' && role !== 'public' && (
+          {/* Constitution (গঠনতন্ত্র) View (Available for All Roles) */}
+          {activeTab === 'constitution' && (
             <ConstitutionView
               lang={lang}
               role={role}
               currentUser={currentUser}
               onNavigateToDeposit={() => setActiveTab(role === 'admin' ? 'admin-deposit' : 'member-deposit')}
-            />
-          )}
-
-          {/* Fallback if public visitor tries to access constitution */}
-          {activeTab === 'constitution' && role === 'public' && (
-            <HomeView
-              lang={lang}
-              members={members}
-              installments={installments}
-              projects={projects}
-              onOpenLogin={() => setShowLoginModal(true)}
-              onSelectTab={setActiveTab}
             />
           )}
 

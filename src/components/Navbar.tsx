@@ -52,7 +52,7 @@ export const Navbar: React.FC<Props> = ({
   };
 
   return (
-    <header className="bg-slate-900/98 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 shadow-2xl print:hidden w-full max-w-full overflow-x-hidden">
+    <header className="bg-slate-900/98 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 shadow-2xl transition-none will-change-transform print:hidden w-full max-w-full overflow-x-hidden">
       
       {/* TOP ANNOUNCEMENT & SHARIAH BAR */}
       <div className="bg-emerald-950/40 border-b border-emerald-500/10 px-3 sm:px-4 py-1.5 text-xs text-slate-300">
@@ -231,6 +231,18 @@ export const Navbar: React.FC<Props> = ({
                 }`}
               >
                 {t.projects}
+              </button>
+              {/* 4. গঠনতন্ত্র (Constitution) */}
+              <button
+                onClick={() => setActiveTab('constitution')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
+                  activeTab === 'constitution'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{t.constitution}</span>
               </button>
             </>
           )}
@@ -471,6 +483,10 @@ export const Navbar: React.FC<Props> = ({
                   <button onClick={() => handleNavClick('home')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.home}</button>
                   <button onClick={() => handleNavClick('about')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.about}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
+                  <button onClick={() => handleNavClick('constitution')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-emerald-400 font-medium flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>{t.constitution}</span>
+                  </button>
                 </>
               ) : role === 'member' ? (
                 <>
