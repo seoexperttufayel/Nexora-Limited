@@ -1,49 +1,47 @@
 import React, { useState, useRef } from 'react';
-import { AdminProfile, Language } from '../types';
+import { Language, AdminProfile, AccentColor, ThemeMode } from '../types';
 import { ImageCropModal } from './ImageCropModal';
-import { saveAdminProfileToCloud, saveUserPasswordToCloud } from '../services/firebase';
 import { 
-  X, User, Mail, Phone, ShieldCheck, Camera, 
-  CheckCircle2, KeyRound, Lock, FileText, Sparkles, Loader2 
+  ShieldCheck, User, Camera, Upload, Trash2, Check, X,
+  Palette, Sun, Moon, KeyRound, Mail, Phone, Building2,
+  Sparkles, CheckCircle2
 } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
-  adminProfile: AdminProfile;
-  lang: Language;
   onClose: () => void;
+  lang: Language;
+  adminProfile: AdminProfile;
   onUpdateAdminProfile: (updated: AdminProfile) => void;
+  accentColor: AccentColor;
+  onSelectAccentColor: (color: AccentColor) => void;
+  themeMode: ThemeMode;
+  onToggleThemeMode: () => void;
+  onOpenChangePassword: () => void;
 }
 
 export const AdminProfileModal: React.FC<Props> = ({
   isOpen,
-  adminProfile,
-  lang,
   onClose,
-  onUpdateAdminProfile
+  lang,
+  adminProfile,
+  onUpdateAdminProfile,
+  accentColor,
+  onSelectAccentColor,
+  themeMode,
+  onToggleThemeMode,
+  onOpenChangePassword
 }) => {
-  const [formData, setFormData] = useState<AdminProfile>({ ...adminProfile });
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
-  
-  // Password change state
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passSuccess, setPassSuccess] = useState('');
-  const [passError, setPassError] = useState('');
-
-  // Image Cropper State
+  const [formData, setFormData] = useState<AdminProfile>(adminProfile);
+  const [isEditing, setIsEditing] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Status & Notification
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-
   if (!isOpen) return null;
 
-  const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -59,439 +57,406 @@ export const AdminProfileModal: React.FC<Props> = ({
   };
 
   const handleCropComplete = (croppedDataUrl: string) => {
-    setFormData(prev => ({
-      ...prev,
+    const updated: AdminProfile = {
+      ...formData,
       avatarUrl: croppedDataUrl
-    }));
+    };
+    setFormData(updated);
+    onUpdateAdminProfile(updated);
+    setToastMessage(lang === 'bn' ? 'অ্যাডমিন প্রোফাইল ছবি আপডেট হয়েছে!' : 'Admin avatar updated successfully!');
+    setTimeout(() => setToastMessage(''), 3000);
   };
 
   const handleRemoveAvatar = () => {
-    setFormData(prev => ({
-      ...prev,
+    const updated: AdminProfile = {
+      ...formData,
       avatarUrl: ''
-    }));
+    };
+    setFormData(updated);
+    onUpdateAdminProfile(updated);
+    setToastMessage(lang === 'bn' ? 'প্রোফাইল ছবি মুছে ফেলা হয়েছে।' : 'Profile avatar removed.');
+    setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
+  const handleSubmitProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg('');
-    setIsSaving(true);
-
-    if (!formData.email || !formData.email.includes('@')) {
-      setIsSaving(false);
-      setErrorMsg(lang === 'bn' ? 'অনুগ্রহ করে সঠিক ইমেল ঠিকানা দিন।' : 'Please enter a valid email address.');
-      return;
-    }
-
-    try {
-      const updated: AdminProfile = {
-        ...formData,
-        updatedAt: new Date().toISOString()
-      };
-
-      // Save in Firestore Cloud & Local state
-      await saveAdminProfileToCloud(updated);
-      onUpdateAdminProfile(updated);
-
-      setIsSaving(false);
-      setSaveSuccess(true);
-      setTimeout(() => {
-        setSaveSuccess(false);
-        onClose();
-      }, 1500);
-    } catch (err) {
-      setIsSaving(false);
-      setErrorMsg(lang === 'bn' ? 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।' : 'Failed to save admin profile.');
-    }
+    onUpdateAdminProfile(formData);
+    setIsEditing(false);
+    setToastMessage(lang === 'bn' ? 'অ্যাডমিন প্রোফাইল তথ্য সংরক্ষিত হয়েছে!' : 'Admin profile details saved!');
+    setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const handleUpdateAdminPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPassError('');
-    setPassSuccess('');
-
-    if (newPassword.length < 6) {
-      setPassError(lang === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' : 'Password must be at least 6 characters.');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPassError(lang === 'bn' ? 'পাসওয়ার্ড দুটি মিলছে না।' : 'Passwords do not match.');
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      await saveUserPasswordToCloud('admin', newPassword);
-      setIsSaving(false);
-      setPassSuccess(lang === 'bn' ? 'অ্যাডমিন পাসওয়ার্ড সফলভাবে আপডেট হয়েছে!' : 'Admin password updated successfully!');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => setPassSuccess(''), 3000);
-    } catch (err) {
-      setIsSaving(false);
-      setPassError(lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে।' : 'Failed to change admin password.');
-    }
-  };
+  const colorThemes: { id: AccentColor; nameBn: string; nameEn: string; primary: string; bgClass: string; borderClass: string }[] = [
+    { id: 'emerald', nameBn: 'শরিয়াহ এমারেল্ড (ডিফল্ট)', nameEn: 'Emerald Green', primary: '#10b981', bgClass: 'bg-emerald-500', borderClass: 'border-emerald-500' },
+    { id: 'amber', nameBn: 'রয়্যাল অ্যাম্বার / গোল্ড', nameEn: 'Royal Gold & Amber', primary: '#f59e0b', bgClass: 'bg-amber-500', borderClass: 'border-amber-500' },
+    { id: 'cyan', nameBn: 'ইলেকট্রিক সায়ান / স্কাই', nameEn: 'Electric Cyan & Sky', primary: '#06b6d4', bgClass: 'bg-cyan-500', borderClass: 'border-cyan-500' },
+    { id: 'rose', nameBn: 'ক্রিমসন রোজ / রেড', nameEn: 'Crimson Rose', primary: '#f43f5e', bgClass: 'bg-rose-500', borderClass: 'border-rose-500' },
+    { id: 'violet', nameBn: 'রয়্যাল ভায়োলেট / পার্পল', nameEn: 'Royal Violet', primary: '#8b5cf6', bgClass: 'bg-purple-500', borderClass: 'border-purple-500' },
+  ];
 
   return (
     <div 
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto"
+      onClick={onClose}
     >
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative text-slate-100 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-        
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
-          aria-label="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Header */}
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/10 shrink-0">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              {lang === 'bn' ? 'অ্যাডমিন প্রোফাইল ম্যানেজমেন্ট' : 'Admin Profile Management'}
-            </h2>
-            <p className="text-xs text-slate-400">
-              {lang === 'bn' 
-                ? 'অ্যাডমিন তথ্য, যোগাযোগ ইমেইল ও নিরাপত্তা পাসওয়ার্ড পরিচালনা করুন' 
-                : 'Manage admin profile credentials, email authorization, and security'}
-            </p>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center space-x-2 border-b border-slate-800 pb-3 mb-6">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              activeTab === 'profile'
-                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>{lang === 'bn' ? 'প্রোফাইল বিবরণ' : 'Profile Details'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              activeTab === 'security'
-                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <KeyRound className="w-4 h-4" />
-            <span>{lang === 'bn' ? 'লগইন ও পাসওয়ার্ড' : 'Security & Password'}</span>
-          </button>
-        </div>
-
-        {/* Feedback messages */}
-        {saveSuccess && (
-          <div className="mb-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span>{lang === 'bn' ? 'অ্যাডমিন প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!' : 'Admin profile saved successfully!'}</span>
+      <div 
+        className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-8 shadow-2xl space-y-6 my-auto text-slate-100 max-h-[90vh] flex flex-col relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Toast Alert */}
+        {toastMessage && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{toastMessage}</span>
           </div>
         )}
 
-        {errorMsg && (
-          <div className="mb-4 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
-            {errorMsg}
+        {/* Modal Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 shadow-md">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-white leading-tight">
+                  {lang === 'bn' ? 'সুপার অ্যাডমিন প্রোফাইল ও থিম কাস্টমাইজার' : 'Super Admin Profile & Appearance'}
+                </h2>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-bold">
+                  MASTER ADMIN
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {lang === 'bn' ? 'প্রোফাইল ছবি, কালার থিম ও অ্যাডমিনিস্ট্রেটিভ সেটিংস পরিচালনা করুন' : 'Manage your executive avatar, visual theme colors, and admin identity'}
+              </p>
+            </div>
           </div>
-        )}
 
-        {/* TAB 1: Profile Information */}
-        {activeTab === 'profile' && (
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            
-            {/* Avatar Section */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative group">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="space-y-6 overflow-y-auto flex-1 pr-1">
+          
+          {/* Section 1: Circular Avatar & Admin Identity */}
+          <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-5">
+            <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 text-center sm:text-left">
+              {/* Circular Avatar with Interactive Hover Effect */}
+              <div className="relative group cursor-pointer">
                 {formData.avatarUrl ? (
                   <img
                     src={formData.avatarUrl}
                     alt={formData.name}
-                    className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-lg shadow-emerald-500/20 shrink-0"
+                    className="w-20 h-20 rounded-full object-cover aspect-square border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-2xl shadow-lg shadow-emerald-500/20 shrink-0">
-                    A
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold text-2xl shadow-lg">
+                    <User className="w-9 h-9 text-emerald-400" />
                   </div>
                 )}
 
-                <label className="absolute inset-0 bg-slate-950/70 rounded-2xl flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer backdrop-blur-[2px]">
+                {/* Upload Overlay Button */}
+                <label className="absolute inset-0 bg-slate-950/75 rounded-full flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition cursor-pointer backdrop-blur-[2px]">
                   <Camera className="w-5 h-5 text-emerald-400" />
-                  <span className="text-[9px] font-bold text-center mt-1">
-                    {lang === 'bn' ? 'ছবি বদলান' : 'Change'}
+                  <span className="text-[9px] font-bold mt-0.5">
+                    {lang === 'bn' ? 'ছবি দিন' : 'Upload'}
                   </span>
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={handleAvatarFileSelect}
+                    onChange={handleAvatarSelect}
                   />
                 </label>
               </div>
 
-              <div className="flex-1 text-center sm:text-left space-y-1">
-                <p className="text-sm font-bold text-white">
-                  {lang === 'bn' ? 'অ্যাডমিন প্রোফাইল ছবি' : 'Admin Profile Photo'}
-                </p>
-                <p className="text-xs text-slate-400">
-                  {lang === 'bn' ? 'ছবি আপলোড করে সঠিক অনুপাতে ক্রপ করে নিন।' : 'Upload photo and crop to custom square aspect ratio.'}
-                </p>
-                <div className="flex flex-wrap gap-2 pt-1 justify-center sm:justify-start">
-                  <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition inline-flex items-center gap-1.5">
-                    <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{lang === 'bn' ? 'নতুন ছবি আপলোড' : 'Upload Photo'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatarFileSelect}
-                    />
-                  </label>
-                  {formData.avatarUrl && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveAvatar}
-                      className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-500/20 transition"
-                    >
-                      {lang === 'bn' ? 'ছবি মুছুন' : 'Remove'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Name Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {lang === 'bn' ? 'অ্যাডমিনের নাম (ইংরেজি) *' : 'Admin Name (English) *'}
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {lang === 'bn' ? 'অ্যাডমিনের নাম (বাংলা) *' : 'Admin Name (Bangla) *'}
-                </label>
-                <input
-                  type="text"
-                  value={formData.nameBn}
-                  onChange={(e) => setFormData({ ...formData, nameBn: e.target.value })}
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            {/* Email & Phone */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {lang === 'bn' ? 'অফিসিয়াল ইমেইল (পাসওয়ার্ড রিসেট ও লগইন) *' : 'Official Email (Password Reset & Login) *'}
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    placeholder="admin@nexoraltd.com"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  {lang === 'bn' 
-                    ? 'এই ইমেইলটি Forgot Password রিকোয়েস্ট যাচাই করতে ব্যবহৃত হবে।' 
-                    : 'This email is authorized to verify forgot password requests.'}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {lang === 'bn' ? 'মোবাইল নম্বর' : 'Phone Number'}
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+880 1711-000000"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 font-mono"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Designation & NID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {lang === 'bn' ? 'পদবী (ইংরেজি)' : 'Designation (English)'}
-                </label>
-                <input
-                  type="text"
-                  value={formData.designationEn}
-                  onChange={(e) => setFormData({ ...formData, designationEn: e.target.value })}
-                  placeholder="Chief Executive Administrator"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {lang === 'bn' ? 'পদবী (বাংলা)' : 'Designation (Bangla)'}
-                </label>
-                <input
-                  type="text"
-                  value={formData.designationBn}
-                  onChange={(e) => setFormData({ ...formData, designationBn: e.target.value })}
-                  placeholder="প্রধান নির্বাহী প্রশাসক"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            {/* NID */}
-            <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
-                {lang === 'bn' ? 'জাতীয় পরিচয়পত্র নং (NID)' : 'National ID (NID)'}
-              </label>
-              <input
-                type="text"
-                value={formData.nid || ''}
-                onChange={(e) => setFormData({ ...formData, nid: e.target.value })}
-                placeholder="1985269258000099"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{lang === 'bn' ? 'সংরক্ষণ করা হচ্ছে...' : 'Saving Profile...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>{lang === 'bn' ? 'প্রোফাইল তথ্য সংরক্ষণ করুন' : 'Save Admin Profile'}</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* TAB 2: Isolated Admin Password Change */}
-        {activeTab === 'security' && (
-          <div className="space-y-4">
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-              <div className="flex items-center space-x-2 text-amber-400">
-                <Lock className="w-4 h-4" />
-                <h3 className="font-bold text-xs sm:text-sm text-white">
-                  {lang === 'bn' ? 'আইসোলেটেড অ্যাডমিন পাসওয়ার্ড' : 'Isolated Admin Password'}
+                <h3 className="text-base font-bold text-white">
+                  {lang === 'bn' ? (formData.nameBn || formData.name) : formData.name}
                 </h3>
+                <p className="text-xs text-emerald-400 font-medium">
+                  {lang === 'bn' ? formData.designationBn : formData.designationEn}
+                </p>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1.5 text-[11px] text-slate-400 font-mono">
+                  <span>{formData.email}</span>
+                  <span>•</span>
+                  <span>{formData.phone}</span>
+                </div>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                {lang === 'bn'
-                  ? 'এই পাসওয়ার্ডটি পরিবর্তন করলে শুধুমাত্র কেন্দ্রীয় অ্যাডমিনিস্ট্রেটর একাউন্টেই আপডেট হবে। কোনো মেম্বার বা সাধারণ শেয়ারহোল্ডার একাউন্টে কোনো প্রভাব পড়বে না।'
-                  : 'Changing this password updates only the Super Admin account credentials in isolated cloud storage.'}
-              </p>
             </div>
 
-            {passSuccess && (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>{passSuccess}</span>
-              </div>
-            )}
-
-            {passError && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
-                {passError}
-              </div>
-            )}
-
-            <form onSubmit={handleUpdateAdminPassword} className="space-y-3.5">
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {lang === 'bn' ? 'নতুন অ্যাডমিন পাসওয়ার্ড' : 'New Admin Password'}
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  {lang === 'bn' ? 'নতুন পাসওয়ার্ড পুনরায় লিখুন' : 'Confirm New Password'}
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-type password"
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
+            <div className="flex flex-wrap items-center gap-2 self-center sm:self-auto">
               <button
-                type="submit"
-                disabled={isSaving}
-                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition"
               >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{lang === 'bn' ? 'সংরক্ষণ করা হচ্ছে...' : 'Saving...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <KeyRound className="w-4 h-4" />
-                    <span>{lang === 'bn' ? 'অ্যাডমিন পাসওয়ার্ড আপডেট করুন' : 'Update Admin Password'}</span>
-                  </>
-                )}
+                <Camera className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'ছবি আপলোড' : 'Upload Photo'}</span>
               </button>
-            </form>
-          </div>
-        )}
 
-        {/* Image Cropper Modal */}
+              {formData.avatarUrl && (
+                <button
+                  onClick={handleRemoveAvatar}
+                  className="p-1.5 px-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs transition"
+                  title="Remove Photo"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Section 2: Multi-Theme Color Customizer */}
+          <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Palette className="w-4 h-4 text-amber-400" />
+                <h4 className="text-sm font-bold text-white">
+                  {lang === 'bn' ? 'মাল্টি-থিম কালার কাস্টমাইজার' : 'Multi-Theme Accent Color System'}
+                </h4>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                {lang === 'bn' ? 'ওয়েবসাইটের অ্যাকসেন্ট কালার তাৎক্ষণিক পরিবর্তন করুন' : 'Instant global theme tint'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {colorThemes.map((theme) => {
+                const isSelected = accentColor === theme.id;
+                return (
+                  <button
+                    key={theme.id}
+                    onClick={() => {
+                      onSelectAccentColor(theme.id);
+                      setToastMessage(lang === 'bn' ? `থিম পরিবর্তন: ${theme.nameBn}` : `Theme changed to ${theme.nameEn}`);
+                      setTimeout(() => setToastMessage(''), 2500);
+                    }}
+                    className={`p-3 rounded-xl border text-left transition flex items-center justify-between gap-2 ${
+                      isSelected
+                        ? `${theme.borderClass} bg-slate-900 shadow-md ring-1 ring-white/10`
+                        : 'border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div 
+                        className={`w-5 h-5 rounded-full ${theme.bgClass} shadow-sm shrink-0 flex items-center justify-center text-slate-950`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span className="text-xs font-semibold text-slate-200 truncate">
+                        {lang === 'bn' ? theme.nameBn : theme.nameEn}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 3: Light / Dark Mode Quick Switcher */}
+          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400">
+                {themeMode === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-white">
+                  {lang === 'bn' ? 'ওয়েবসাইট মোড (Light / Dark Mode)' : 'Interface Appearance Mode'}
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  {themeMode === 'dark' 
+                    ? (lang === 'bn' ? 'ডার্ক মোড সক্রিয় (আই-সেফ)' : 'Dark Mode Active') 
+                    : (lang === 'bn' ? 'লাইট মোড সক্রিয় (উজ্জ্বল)' : 'Light Mode Active')}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={onToggleThemeMode}
+              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition ${
+                themeMode === 'dark'
+                  ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700'
+                  : 'bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400 shadow-md'
+              }`}
+            >
+              {themeMode === 'dark' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{lang === 'bn' ? 'লাইট মোড করুন' : 'Switch to Light'}</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-slate-950" />
+                  <span>{lang === 'bn' ? 'ডার্ক মোড করুন' : 'Switch to Dark'}</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Section 4: Edit Admin Details Form */}
+          <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                <User className="w-4 h-4 text-emerald-400" />
+                <span>{lang === 'bn' ? 'অ্যাডমিন তথ্যাবলি সম্পাদনা' : 'Admin Profile Details'}</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => setIsEditing(!isEditing)}
+                className="text-xs text-emerald-400 hover:underline font-semibold"
+              >
+                {isEditing ? (lang === 'bn' ? 'বাতিল' : 'Cancel') : (lang === 'bn' ? 'সম্পাদনা করুন' : 'Edit Details')}
+              </button>
+            </div>
+
+            {isEditing ? (
+              <form onSubmit={handleSubmitProfile} className="space-y-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">{lang === 'bn' ? 'নাম (ইংরেজি) *' : 'Name (English) *'}</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">{lang === 'bn' ? 'নাম (বাংলা) *' : 'Name (Bengali) *'}</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.nameBn}
+                      onChange={(e) => setFormData({ ...formData, nameBn: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">{lang === 'bn' ? 'পদবি (ইংরেজি)' : 'Designation (English)'}</label>
+                    <input
+                      type="text"
+                      value={formData.designationEn}
+                      onChange={(e) => setFormData({ ...formData, designationEn: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">{lang === 'bn' ? 'পদবি (বাংলা)' : 'Designation (Bengali)'}</label>
+                    <input
+                      type="text"
+                      value={formData.designationBn}
+                      onChange={(e) => setFormData({ ...formData, designationBn: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">{lang === 'bn' ? 'ইমেইল' : 'Email'}</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">{lang === 'bn' ? 'মোবাইল নম্বর' : 'Phone'}</label>
+                    <input
+                      type="text"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold"
+                  >
+                    {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? 'সংরক্ষণ করুন' : 'Save Details'}</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block">{lang === 'bn' ? 'অফিসিয়াল পদবি' : 'Official Role'}</span>
+                  <span className="text-white font-bold mt-0.5 block">{formData.designationBn || formData.designationEn}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-[11px] text-slate-400 block">{lang === 'bn' ? 'নিরাপত্তা স্থিতি' : 'Security Level'}</span>
+                  <span className="text-emerald-400 font-bold font-mono mt-0.5 block">Full Super Administrator (Tier 1)</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 5: Password & Security Action */}
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <KeyRound className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-amber-300">
+                  {lang === 'bn' ? 'অ্যাকাউন্ট সিকিউরিটি ও পাসওয়ার্ড' : 'Security & Access Control'}
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  {lang === 'bn' ? 'নিয়মিত আপনার পাসওয়ার্ড পরিবর্তন করে অ্যাকাউন্ট সুরক্ষিত রাখুন' : 'Update admin master password securely'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                onClose();
+                onOpenChangePassword();
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shadow-md"
+            >
+              {lang === 'bn' ? 'পাসওয়ার্ড বদলান' : 'Change Password'}
+            </button>
+          </div>
+
+        </div>
+
+        {/* Modal Footer */}
+        <div className="pt-3 border-t border-slate-800 flex justify-end shrink-0">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition"
+          >
+            {lang === 'bn' ? 'সম্পন্ন' : 'Done'}
+          </button>
+        </div>
+
+      </div>
+
+      {/* Image Crop Modal for Admin Avatar */}
+      {cropModalOpen && (
         <ImageCropModal
           isOpen={cropModalOpen}
           imageSrc={cropImageSrc}
@@ -499,8 +464,7 @@ export const AdminProfileModal: React.FC<Props> = ({
           onClose={() => setCropModalOpen(false)}
           onCropComplete={handleCropComplete}
         />
-
-      </div>
+      )}
     </div>
   );
 };

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Installment, Member, LedgerTransaction, Notice, Project, Language } from '../types';
+import { Installment, Member, LedgerTransaction, Notice, Project, PaymentAccountConfig, Language } from '../types';
 import { 
   Trash2, RotateCcw, AlertTriangle, X, Check, 
   FileText, Users, Landmark, AlertCircle, ShieldAlert, Sparkles,
-  Bell, Building2
+  Bell, Building2, CreditCard
 } from 'lucide-react';
 
 interface UniversalTrashModalProps {
@@ -15,6 +15,7 @@ interface UniversalTrashModalProps {
   ledgerTransactions: LedgerTransaction[];
   notices?: Notice[];
   projects?: Project[];
+  paymentAccounts?: PaymentAccountConfig[];
   onRestoreInstallment?: (id: string) => void;
   onPermanentDeleteInstallment?: (id: string) => void;
   onRestoreMember?: (id: string) => void;
@@ -25,6 +26,8 @@ interface UniversalTrashModalProps {
   onPermanentDeleteNotice?: (id: string) => void;
   onRestoreProject?: (id: string) => void;
   onPermanentDeleteProject?: (id: string) => void;
+  onRestorePaymentAccount?: (id: string) => void;
+  onPermanentDeletePaymentAccount?: (id: string) => void;
   onPurgeAllTrash?: () => void;
 }
 
@@ -37,6 +40,7 @@ export const UniversalTrashModal: React.FC<UniversalTrashModalProps> = ({
   ledgerTransactions,
   notices = [],
   projects = [],
+  paymentAccounts = [],
   onRestoreInstallment,
   onPermanentDeleteInstallment,
   onRestoreMember,
@@ -47,11 +51,13 @@ export const UniversalTrashModal: React.FC<UniversalTrashModalProps> = ({
   onPermanentDeleteNotice,
   onRestoreProject,
   onPermanentDeleteProject,
+  onRestorePaymentAccount,
+  onPermanentDeletePaymentAccount,
   onPurgeAllTrash
 }) => {
-  const [filterType, setFilterType] = useState<'all' | 'installments' | 'members' | 'ledger' | 'notices' | 'projects'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'installments' | 'members' | 'ledger' | 'notices' | 'projects' | 'accounts'>('all');
   const [showPurgeAllConfirm, setShowPurgeAllConfirm] = useState(false);
-  const [singlePurgeTarget, setSinglePurgeTarget] = useState<{ id: string; type: 'installment' | 'member' | 'ledger' | 'notice' | 'project'; name: string } | null>(null);
+  const [singlePurgeTarget, setSinglePurgeTarget] = useState<{ id: string; type: 'installment' | 'member' | 'ledger' | 'notice' | 'project' | 'account'; name: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -60,13 +66,15 @@ export const UniversalTrashModal: React.FC<UniversalTrashModalProps> = ({
   const trashedLedger = ledgerTransactions.filter(t => t.isDeleted);
   const trashedNotices = notices.filter(n => n.isDeleted);
   const trashedProjects = projects.filter(p => p.isDeleted);
+  const trashedAccounts = paymentAccounts.filter(a => a.isDeleted);
 
   const totalTrashedCount = 
     trashedInstallments.length + 
     trashedMembers.length + 
     trashedLedger.length + 
     trashedNotices.length + 
-    trashedProjects.length;
+    trashedProjects.length +
+    trashedAccounts.length;
 
   const handleConfirmPurgeAll = () => {
     if (onPurgeAllTrash) {
@@ -87,6 +95,8 @@ export const UniversalTrashModal: React.FC<UniversalTrashModalProps> = ({
       onPermanentDeleteNotice(singlePurgeTarget.id);
     } else if (singlePurgeTarget.type === 'project' && onPermanentDeleteProject) {
       onPermanentDeleteProject(singlePurgeTarget.id);
+    } else if (singlePurgeTarget.type === 'account' && onPermanentDeletePaymentAccount) {
+      onPermanentDeletePaymentAccount(singlePurgeTarget.id);
     }
     setSinglePurgeTarget(null);
   };
@@ -222,6 +232,21 @@ export const UniversalTrashModal: React.FC<UniversalTrashModalProps> = ({
               <span className="font-mono text-[11px]">({trashedProjects.length})</span>
             </button>
           )}
+
+          {trashedAccounts.length > 0 && (
+            <button
+              onClick={() => setFilterType('accounts')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 flex items-center gap-1.5 ${
+                filterType === 'accounts'
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
+                  : 'bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>{lang === 'bn' ? 'পেমেন্ট গেটওয়ে' : 'Gateways'}</span>
+              <span className="font-mono text-[11px]">({trashedAccounts.length})</span>
+            </button>
+          )}
         </div>
 
         {/* Trashed Items List */}
@@ -238,6 +263,53 @@ export const UniversalTrashModal: React.FC<UniversalTrashModalProps> = ({
             </div>
           ) : (
             <>
+              {/* Trashed Payment Accounts */}
+              {(filterType === 'all' || filterType === 'accounts') && trashedAccounts.map((acc) => (
+                <div
+                  key={acc.id}
+                  className="p-4 rounded-2xl bg-slate-950 border border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-mono font-bold text-[10px]">
+                        PAYMENT GATEWAY
+                      </span>
+                      <span className="font-mono text-slate-400 font-semibold">{acc.id}</span>
+                      <span className="text-slate-500">•</span>
+                      <span className="text-slate-200 font-bold">{lang === 'bn' ? acc.titleBn : acc.titleEn}</span>
+                    </div>
+                    <p className="text-slate-400 font-mono">
+                      {acc.accountNumber} ({acc.accountTypeBn || acc.accountTypeEn})
+                    </p>
+                    {acc.deletedAt && (
+                      <p className="text-[10px] text-slate-500">
+                        {lang === 'bn' ? 'মুছে ফেলা হয়েছে:' : 'Deleted on:'} {new Date(acc.deletedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                    {onRestorePaymentAccount && (
+                      <button
+                        onClick={() => onRestorePaymentAccount(acc.id)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1 transition"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>{lang === 'bn' ? 'পুনরুদ্ধার' : 'Restore'}</span>
+                      </button>
+                    )}
+                    {onPermanentDeletePaymentAccount && (
+                      <button
+                        onClick={() => setSinglePurgeTarget({ id: acc.id, type: 'account', name: lang === 'bn' ? acc.titleBn : acc.titleEn })}
+                        className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition"
+                        title="Permanently Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
               {/* Trashed Notices */}
               {(filterType === 'all' || filterType === 'notices') && trashedNotices.map((notice) => (
                 <div

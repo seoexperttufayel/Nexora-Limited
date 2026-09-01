@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Language, Role } from '../types';
+import { Language, Role, ThemeMode, AdminProfile } from '../types';
 import { translations } from '../data/translations';
 import { NexoraLogo } from './NexoraLogo';
 import { 
   ShieldCheck, Globe, Lock, LogOut, UserCheck, 
   Menu, X, Sparkles, Building2, Bell, FileText, CheckCircle2,
-  KeyRound, ChevronRight, User, Landmark, Trash2, BookOpen
+  KeyRound, ChevronRight, User, Landmark, Trash2,
+  Sun, Moon, Palette, Shield
 } from 'lucide-react';
 
 interface Props {
@@ -24,6 +25,10 @@ interface Props {
   noticeCount?: number;
   trashedCount?: number;
   isCloudSynced?: boolean;
+  themeMode?: ThemeMode;
+  onToggleThemeMode?: () => void;
+  adminProfile?: AdminProfile;
+  onOpenAdminProfile?: () => void;
 }
 
 export const Navbar: React.FC<Props> = ({
@@ -41,7 +46,11 @@ export const Navbar: React.FC<Props> = ({
   pendingCount,
   noticeCount = 0,
   trashedCount = 0,
-  isCloudSynced = true
+  isCloudSynced = true,
+  themeMode = 'dark',
+  onToggleThemeMode,
+  adminProfile,
+  onOpenAdminProfile
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const t = translations[lang];
@@ -50,6 +59,8 @@ export const Navbar: React.FC<Props> = ({
     setActiveTab(tab);
     setMenuOpen(false);
   };
+
+  const adminAvatar = adminProfile?.avatarUrl;
 
   return (
     <header className="bg-slate-900/98 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 shadow-2xl transition-none will-change-transform print:hidden w-full max-w-full overflow-x-hidden">
@@ -90,7 +101,7 @@ export const Navbar: React.FC<Props> = ({
           <NexoraLogo size="md" variant="full" />
         </div>
 
-        {/* Right Action Tools: Notice Board Button directly adjacent to Language Switcher */}
+        {/* Right Action Tools */}
         <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
           
           {/* NOTICE BOARD (বিজ্ঞপ্তি বোর্ড) ICON BUTTON */}
@@ -120,6 +131,22 @@ export const Navbar: React.FC<Props> = ({
             <span className="text-[11px] sm:text-xs font-bold">{lang === 'bn' ? 'EN' : 'বাং'}</span>
           </button>
 
+          {/* LIGHT / DARK MODE TOGGLE BUTTON (Positioned directly between Language & Profile Avatar) */}
+          {onToggleThemeMode && (
+            <button
+              onClick={onToggleThemeMode}
+              className="p-1.5 sm:px-2.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-amber-300 text-xs font-semibold transition border border-slate-700 shadow-sm active:scale-95 shrink-0 flex items-center gap-1"
+              title={themeMode === 'light' ? (lang === 'bn' ? 'ডার্ক মোড চালু করুন' : 'Switch to Dark Mode') : (lang === 'bn' ? 'লাইট মোড চালু করুন' : 'Switch to Light Mode')}
+              aria-label="Toggle Theme Mode"
+            >
+              {themeMode === 'light' ? (
+                <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400 hover:rotate-12 transition-transform" />
+              ) : (
+                <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 hover:rotate-45 transition-transform" />
+              )}
+            </button>
+          )}
+
           {/* Super Admin Central Trash Bin Button */}
           {role === 'admin' && onOpenTrash && (
             <button
@@ -148,18 +175,66 @@ export const Navbar: React.FC<Props> = ({
               <span className="hidden sm:inline">{t.clientArea}</span>
               <span className="sm:hidden">{lang === 'bn' ? 'লগইন' : 'Login'}</span>
             </button>
+          ) : role === 'admin' ? (
+            /* ADMIN PROFILE AVATAR IN HEADER (Replaces 'ADM' raw text with clean circular profile picture) */
+            <div className="flex items-center space-x-1 sm:space-x-1.5 bg-slate-800/90 border border-slate-700/80 p-1 sm:p-1.5 pr-1.5 sm:pr-2.5 rounded-2xl shrink-0">
+              <button
+                onClick={onOpenAdminProfile}
+                className="relative group flex items-center shrink-0 focus:outline-none"
+                title={lang === 'bn' ? 'অ্যাডমিন প্রোফাইল ও থিম কাস্টমাইজেশন' : 'Admin Profile & Theme Settings'}
+                aria-label="Open Admin Profile"
+              >
+                {adminAvatar ? (
+                  <img
+                    src={adminAvatar}
+                    alt={adminProfile?.nameEn || 'Admin'}
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover aspect-square border-2 border-emerald-500 shadow-md group-hover:scale-105 transition-transform"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white border-2 border-emerald-400/80 shadow-md group-hover:scale-105 transition-transform">
+                    <User className="w-4 h-4 text-slate-950" />
+                  </div>
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+              </button>
+
+              <button
+                onClick={onOpenAdminProfile}
+                className="text-left hidden lg:block hover:opacity-90 transition pr-1"
+                title="Edit Admin Profile & Theme"
+              >
+                <p className="text-xs font-bold text-white leading-tight truncate max-w-[100px] xl:max-w-[130px]">
+                  {lang === 'bn' ? (adminProfile?.nameBn || 'অ্যাডমিন') : (adminProfile?.nameEn || 'Admin')}
+                </p>
+                <p className="text-[10px] text-emerald-400 font-mono leading-tight flex items-center gap-1">
+                  <span>Super Admin</span>
+                  <Palette className="w-2.5 h-2.5 text-slate-400" />
+                </p>
+              </button>
+
+              <button
+                onClick={onLogout}
+                className="p-1 sm:p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition ml-0.5"
+                title={t.logout}
+                aria-label="Logout"
+              >
+                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+            </div>
           ) : (
+            /* MEMBER PROFILE AVATAR IN HEADER */
             <div className="flex items-center space-x-1 sm:space-x-1.5 bg-slate-800/90 border border-slate-700/80 p-1 sm:p-1.5 pr-1.5 sm:pr-2.5 rounded-2xl shrink-0">
               {currentUser?.avatarUrl ? (
                 <img
                   src={currentUser.avatarUrl}
                   alt={currentUser.name}
-                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-xl object-cover aspect-square border border-emerald-500/50 shadow-sm shrink-0"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover aspect-square border border-emerald-500/50 shadow-sm shrink-0"
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400 text-[10px] sm:text-xs font-mono shrink-0">
-                  {role === 'admin' ? 'ADM' : currentUser?.id?.slice(-3) || 'MEM'}
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400 text-[10px] sm:text-xs font-mono shrink-0">
+                  {currentUser?.id?.slice(-3) || 'MEM'}
                 </div>
               )}
               <div className="text-left hidden lg:block">
@@ -167,7 +242,7 @@ export const Navbar: React.FC<Props> = ({
                   {lang === 'bn' ? (currentUser?.nameBn || currentUser?.name) : currentUser?.name}
                 </p>
                 <p className="text-[10px] text-emerald-400 font-mono leading-tight">
-                  {role === 'admin' ? 'Super Admin' : `${currentUser?.id} (${currentUser?.share}%)`}
+                  {`${currentUser?.id} (${currentUser?.share}%)`}
                 </p>
               </div>
 
@@ -231,18 +306,6 @@ export const Navbar: React.FC<Props> = ({
                 }`}
               >
                 {t.projects}
-              </button>
-              {/* 4. গঠনতন্ত্র (Constitution) */}
-              <button
-                onClick={() => setActiveTab('constitution')}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
-                  activeTab === 'constitution'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>{t.constitution}</span>
               </button>
             </>
           )}
@@ -322,19 +385,6 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.projects}
               </button>
-
-              {/* 7. গঠনতন্ত্র (Constitution) */}
-              <button
-                onClick={() => setActiveTab('constitution')}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
-                  activeTab === 'constitution'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>{t.constitution}</span>
-              </button>
             </>
           )}
 
@@ -379,7 +429,12 @@ export const Navbar: React.FC<Props> = ({
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`}
               >
-                {t.installments}
+                <span>{t.installments}</span>
+                {pendingCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] flex items-center justify-center ml-1">
+                    {pendingCount}
+                  </span>
+                )}
               </button>
 
               {/* 4. আর্থিক লেজার (Financial Ledger) */}
@@ -418,19 +473,6 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.projects}
               </button>
-
-              {/* 7. গঠনতন্ত্র (Constitution) */}
-              <button
-                onClick={() => setActiveTab('constitution')}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
-                  activeTab === 'constitution'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>{t.constitution}</span>
-              </button>
             </>
           )}
 
@@ -445,12 +487,38 @@ export const Navbar: React.FC<Props> = ({
           {role !== 'public' && currentUser && (
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-4">
               <div className="flex items-center space-x-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400 shrink-0">
-                  {role === 'admin' ? 'ADM' : currentUser.name?.charAt(0)}
-                </div>
+                {role === 'admin' ? (
+                  adminAvatar ? (
+                    <img
+                      src={adminAvatar}
+                      alt="Admin"
+                      className="w-10 h-10 rounded-full object-cover aspect-square border-2 border-emerald-500 shrink-0 shadow-md"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-bold text-slate-950 shrink-0">
+                      <User className="w-5 h-5" />
+                    </div>
+                  )
+                ) : (
+                  currentUser.avatarUrl ? (
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt={currentUser.name}
+                      className="w-10 h-10 rounded-full object-cover aspect-square border-2 border-emerald-500 shrink-0 shadow-md"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-400 shrink-0">
+                      {currentUser.name?.charAt(0)}
+                    </div>
+                  )
+                )}
                 <div className="min-w-0">
                   <p className="font-bold text-white text-sm truncate">
-                    {lang === 'bn' ? (currentUser.nameBn || currentUser.name) : currentUser.name}
+                    {role === 'admin'
+                      ? (lang === 'bn' ? (adminProfile?.nameBn || 'অ্যাডমিন') : (adminProfile?.nameEn || 'Admin'))
+                      : (lang === 'bn' ? (currentUser.nameBn || currentUser.name) : currentUser.name)}
                   </p>
                   <p className="text-xs text-emerald-400 font-mono truncate">
                     {role === 'admin' ? 'Super Administrator' : `${currentUser.id} • ${currentUser.share}% Equity`}
@@ -458,17 +526,32 @@ export const Navbar: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Change Password button */}
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  onOpenChangePassword();
-                }}
-                className="px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition shrink-0"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                <span>{t.changePassword}</span>
-              </button>
+              <div className="flex items-center space-x-2 shrink-0">
+                {role === 'admin' && onOpenAdminProfile && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpenAdminProfile();
+                    }}
+                    className="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition"
+                  >
+                    <Palette className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? 'প্রোফাইল ও থিম' : 'Profile & Theme'}</span>
+                  </button>
+                )}
+
+                {/* Change Password button */}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenChangePassword();
+                  }}
+                  className="px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t.changePassword}</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -483,10 +566,6 @@ export const Navbar: React.FC<Props> = ({
                   <button onClick={() => handleNavClick('home')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.home}</button>
                   <button onClick={() => handleNavClick('about')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.about}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
-                  <button onClick={() => handleNavClick('constitution')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-emerald-400 font-medium flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>{t.constitution}</span>
-                  </button>
                 </>
               ) : role === 'member' ? (
                 <>
@@ -496,11 +575,7 @@ export const Navbar: React.FC<Props> = ({
                   <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
-                  <button onClick={() => handleNavClick('constitution')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-emerald-400 font-medium flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>{t.constitution}</span>
-                  </button>
-                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5">
+                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5 col-span-2 sm:col-span-1">
                     <KeyRound className="w-3.5 h-3.5" />
                     <span>{t.changePassword}</span>
                   </button>
@@ -513,14 +588,16 @@ export const Navbar: React.FC<Props> = ({
                   <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
-                  <button onClick={() => handleNavClick('constitution')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-emerald-400 font-medium flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>{t.constitution}</span>
-                  </button>
                   {onOpenTrash && (
                     <button onClick={() => { setMenuOpen(false); onOpenTrash(); }} className="p-3 text-left bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl font-medium flex items-center gap-1.5">
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>{lang === 'bn' ? 'সেন্ট্রাল ট্র্যাশ বিন' : 'Central Trash'}</span>
+                    </button>
+                  )}
+                  {onOpenAdminProfile && (
+                    <button onClick={() => { setMenuOpen(false); onOpenAdminProfile(); }} className="p-3 text-left bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl font-medium flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5" />
+                      <span>{lang === 'bn' ? 'প্রোফাইল ও থিম' : 'Profile & Theme'}</span>
                     </button>
                   )}
                   <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5">
@@ -549,6 +626,16 @@ export const Navbar: React.FC<Props> = ({
                 </span>
               )}
             </button>
+
+            {onToggleThemeMode && (
+              <button
+                onClick={onToggleThemeMode}
+                className="flex items-center space-x-1.5 text-slate-300 hover:text-amber-300"
+              >
+                {themeMode === 'light' ? <Moon className="w-4 h-4 text-indigo-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
+                <span>{themeMode === 'light' ? (lang === 'bn' ? 'ডার্ক মোড' : 'Dark Mode') : (lang === 'bn' ? 'লাইট মোড' : 'Light Mode')}</span>
+              </button>
+            )}
 
             {role === 'public' ? (
               <button
@@ -581,4 +668,3 @@ export const Navbar: React.FC<Props> = ({
     </header>
   );
 };
-

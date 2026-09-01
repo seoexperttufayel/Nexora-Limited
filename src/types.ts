@@ -66,6 +66,23 @@ export interface LedgerTransaction {
   createdAt?: string;
 }
 
+export type AccentColor = 'emerald' | 'amber' | 'cyan' | 'rose' | 'violet';
+export type ThemeMode = 'dark' | 'light';
+
+export interface AdminProfile {
+  name: string;
+  nameEn?: string;
+  nameBn: string;
+  designationEn: string;
+  designationBn: string;
+  phone: string;
+  email: string;
+  avatarUrl?: string;
+  role: string;
+  themePreference?: ThemeMode;
+  accentColor?: AccentColor;
+}
+
 export interface PaymentAccountConfig {
   id: string;
   titleEn: string;
@@ -84,6 +101,9 @@ export interface PaymentAccountConfig {
   instructionsEn?: string;
   instructionsBn?: string;
   isActive: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface ProjectDocument {
@@ -168,23 +188,12 @@ export interface CompanyPost {
   tagsBn: string[];
 }
 
-export interface AdminProfile {
+export interface ExpenseRecord {
   id: string;
-  name: string;
-  nameBn: string;
-  email: string;
-  phone: string;
-  nid?: string;
-  designationEn: string;
-  designationBn: string;
-  role: 'admin';
-  avatarUrl?: string;
-  bioEn?: string;
-  bioBn?: string;
-  updatedAt?: string;
-}
-
-export interface LanguageProps {
-  lang: Language;
+  category: string;
+  title: string;
+  amount: number;
+  date: string;
+  approvedBy: string;
 }
 

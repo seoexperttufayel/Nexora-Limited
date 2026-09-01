@@ -29,6 +29,11 @@ export const AdminPaymentAccountsModal: React.FC<Props> = ({
 }) => {
   const [editingAccount, setEditingAccount] = useState<PaymentAccountConfig | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Active accounts only
+  const activeAccounts = paymentAccounts.filter(acc => !acc.isDeleted);
 
   // Form State for new account
   const [newTitleBn, setNewTitleBn] = useState('');
@@ -389,7 +394,12 @@ export const AdminPaymentAccountsModal: React.FC<Props> = ({
 
         {/* LIST OF EXISTING PAYMENT ACCOUNTS */}
         <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-          {paymentAccounts.map((acc) => (
+          {activeAccounts.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-xs">
+              {lang === 'bn' ? 'কোনো সক্রিয় পেমেন্ট অ্যাকাউন্ট নেই।' : 'No active payment gateways configured.'}
+            </div>
+          ) : (
+            activeAccounts.map((acc) => (
             <div
               key={acc.id}
               className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
@@ -436,11 +446,7 @@ export const AdminPaymentAccountsModal: React.FC<Props> = ({
                 </button>
 
                 <button
-                  onClick={() => {
-                    if (window.confirm(lang === 'bn' ? `"${acc.titleBn || acc.titleEn}" অ্যাকাউন্টটি মুছে ফেলতে চান?` : `Delete account "${acc.titleEn || acc.titleBn}"?`)) {
-                      onDeleteAccount(acc.id);
-                    }
-                  }}
+                  onClick={() => setDeleteConfirmId(acc.id)}
                   title={lang === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
                   className="p-1.5 px-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition flex items-center gap-1 text-xs"
                 >
@@ -449,7 +455,8 @@ export const AdminPaymentAccountsModal: React.FC<Props> = ({
                 </button>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Modal footer */}
@@ -463,6 +470,53 @@ export const AdminPaymentAccountsModal: React.FC<Props> = ({
         </div>
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div 
+          className="fixed inset-0 z-60 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setDeleteConfirmId(null)}
+        >
+          <div 
+            className="bg-slate-900 border border-rose-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/20">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-white">
+                {lang === 'bn' ? 'গেটওয়ে অ্যাকাউন্ট ট্র্যাশে পাঠান' : 'Move Gateway to Trash?'}
+              </h4>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                {lang === 'bn' 
+                  ? 'এই অ্যাকাউন্টটি ট্র্যাশ বক্সে পাঠানো হবে। আপনি সেন্ট্রাল ট্র্যাশ বিন থেকে যেকোনো সময় এটি পুনরুদ্ধার (Restore) করতে পারবেন।' 
+                  : 'This gateway account will be moved to the Trash Bin. You can restore it anytime from Central Trash.'}
+              </p>
+            </div>
+            <div className="flex items-center justify-center space-x-3 pt-2">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+              >
+                {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteAccount(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }}
+                className="px-5 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold shadow-lg shadow-rose-500/25 flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'ট্র্যাশে পাঠান' : 'Move to Trash'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
+

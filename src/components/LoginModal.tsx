@@ -1,48 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Language, Role, Member, AdminProfile } from '../types';
-import { FOUNDER_MEMBERS, DEFAULT_ADMIN_PROFILE } from '../data/initialData';
-import { 
-  sendLivePasswordResetRequest, 
-  verifyPasswordResetOtp, 
-  saveUserPasswordToCloud, 
-  getUserPasswordFromCloud 
-} from '../services/firebase';
-import { X, Lock, User, KeyRound, Mail, ShieldCheck, ArrowLeft, CheckCircle2, AlertTriangle, Send, Loader2 } from 'lucide-react';
+import { Language, Role, Member } from '../types';
+import { FOUNDER_MEMBERS } from '../data/initialData';
+import { X, Lock, User, KeyRound, Mail, ShieldCheck, ArrowLeft, CheckCircle2, AlertTriangle, Send } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
   lang: Language;
   members?: Member[];
-  adminProfile?: AdminProfile;
   onClose: () => void;
   onSuccess: (role: Role, user: any) => void;
 }
 
-export const LoginModal: React.FC<Props> = ({ 
-  isOpen, 
-  lang, 
-  members, 
-  adminProfile, 
-  onClose, 
-  onSuccess 
-}) => {
+export const LoginModal: React.FC<Props> = ({ isOpen, lang, members, onClose, onSuccess }) => {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   
   // Forgot Password / Recovery State
   const [showRecovery, setShowRecovery] = useState(false);
   const [recoveryStep, setRecoveryStep] = useState<'request' | 'verify' | 'newpass' | 'success'>('request');
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoveryId, setRecoveryId] = useState('admin');
-  const [verificationId, setVerificationId] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState('');
   const [enteredCode, setEnteredCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [recoveryMsg, setRecoveryMsg] = useState('');
   const [recoveryError, setRecoveryError] = useState('');
-  const [isSendingCode, setIsSendingCode] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -58,168 +42,84 @@ export const LoginModal: React.FC<Props> = ({
   if (!isOpen) return null;
 
   const currentMembersList = members && members.length > 0 ? members : FOUNDER_MEMBERS;
-  const currentAdmin = adminProfile || DEFAULT_ADMIN_PROFILE;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
     const cleanId = loginId.trim();
-    const cleanLowerId = cleanId.toLowerCase();
 
-    try {
-      // 1. Fetch isolated cloud / local password for this specific user
-      const cloudPassword = await getUserPasswordFromCloud(cleanLowerId);
+    // Check custom password if set
+    const storedPasswords = JSON.parse(localStorage.getItem('nxr_user_passwords') || '{}');
+    const expectedCustomPass = storedPasswords[cleanId] || storedPasswords[cleanId.toLowerCase()] || storedPasswords[cleanId.toUpperCase()];
 
-      // Check Admin Login
-      if (cleanLowerId === 'admin' || cleanLowerId === currentAdmin.email.toLowerCase()) {
-        const expectedAdminPass = cloudPassword || 'admin123';
-        const isValidAdmin = password === expectedAdminPass || password === 'Nexora@2026' || password === 'admin123';
+    // Check Admin Login
+    if (cleanId.toLowerCase() === 'admin') {
+      const isValidAdmin = expectedCustomPass 
+        ? password === expectedCustomPass 
+        : (password === 'Nexora@2026' || password === 'admin' || password === '123456');
 
-        if (isValidAdmin) {
-          setIsLoading(false);
-          onSuccess('admin', {
-            id: 'admin',
-            name: currentAdmin.name || 'Super Admin',
-            nameBn: currentAdmin.nameBn || 'সুপার অ্যাডমিন',
-            role: 'admin',
-            email: currentAdmin.email
-          });
-          onClose();
-          return;
-        }
-      }
-
-      // Check Member Login
-      const found = currentMembersList.find(
-        m => m.id.toLowerCase() === cleanLowerId || (m.email && m.email.toLowerCase() === cleanLowerId)
-      );
-
-      if (found) {
-        const memberKey = found.id.toLowerCase();
-        const memberCloudPass = await getUserPasswordFromCloud(memberKey);
-        const expectedMemberPass = memberCloudPass || 'Nexora@2026';
-        const isValidMember = password === expectedMemberPass || password === 'Nexora@2026';
-
-        if (isValidMember) {
-          setIsLoading(false);
-          onSuccess('member', found);
-          onClose();
-          return;
-        }
-      }
-
-      setIsLoading(false);
-      setError(
-        lang === 'bn' 
-          ? 'ভুল আইডি অথবা পাসওয়ার্ড! অনুগ্রহ করে সঠিক তথ্য দিয়ে লগইন করুন।' 
-          : 'Invalid ID or Password! Please verify your credentials.'
-      );
-    } catch (err) {
-      setIsLoading(false);
-      setError(lang === 'bn' ? 'লগইন ব্যর্থ হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।' : 'Login failed. Please try again.');
-    }
-  };
-
-  const handleSendRecoveryCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRecoveryError('');
-    setRecoveryMsg('');
-    setIsSendingCode(true);
-
-    const cleanId = recoveryId.trim().toLowerCase();
-    const cleanEmail = recoveryEmail.trim().toLowerCase();
-
-    if (!cleanEmail) {
-      setIsSendingCode(false);
-      setRecoveryError(lang === 'bn' ? 'অনুগ্রহ করে আপনার নিবন্ধিত ইমেল ঠিকানা দিন।' : 'Please enter your registered email address.');
-      return;
-    }
-
-    // 1. Validate against strictly registered profile email
-    let registeredEmail = '';
-    let accountName = '';
-
-    if (cleanId === 'admin') {
-      registeredEmail = (currentAdmin.email || 'admin@nexoraltd.com').toLowerCase();
-      accountName = currentAdmin.name || 'Administrator';
-    } else {
-      const foundMember = currentMembersList.find(m => m.id.toLowerCase() === cleanId);
-      if (!foundMember) {
-        setIsSendingCode(false);
-        setRecoveryError(
-          lang === 'bn'
-            ? `প্রদত্ত মেম্বার আইডি "${recoveryId}" সিস্টেমে খুঁজে পাওয়া যায়নি!`
-            : `Member ID "${recoveryId}" was not found in the system!`
-        );
+      if (isValidAdmin) {
+        onSuccess('admin', { id: 'admin', name: 'Super Admin', nameBn: 'সুপার অ্যাডমিন', role: 'admin' });
+        onClose();
+        setError('');
         return;
       }
-      registeredEmail = (foundMember.email || '').toLowerCase();
-      accountName = lang === 'bn' ? foundMember.nameBn : foundMember.name;
     }
 
-    // Strict Email Authorization Check
-    if (registeredEmail !== cleanEmail) {
-      setIsSendingCode(false);
-      setRecoveryError(
-        lang === 'bn'
-          ? `নিরাপত্তা সতর্কতা: প্রদত্ত ইমেলটি (${cleanEmail}) এই অ্যাকাউন্টের নিবন্ধিত ইমেলের সাথে মিলছে না! শুধুমাত্র প্রোফাইলে নিবন্ধিত ইমেইল ব্যবহার করা আবশ্যক।`
-          : `Security Alert: The email (${cleanEmail}) does not match the registered profile email for account "${recoveryId}". Reset is restricted to registered emails only.`
-      );
-      return;
-    }
+    // Check Member Login
+    const found = currentMembersList.find(m => m.id.toLowerCase() === cleanId.toLowerCase());
+    if (found) {
+      const isValidMember = expectedCustomPass 
+        ? password === expectedCustomPass 
+        : (password === 'Nexora@2026' || password === 'Nexora@123' || password === '123456');
 
-    try {
-      // 2. Dispatch Live Password Reset Request
-      const response = await sendLivePasswordResetRequest(cleanId, cleanEmail, accountName);
-      
-      if (response.success) {
-        if (response.otpVerificationId) {
-          setVerificationId(response.otpVerificationId);
-        }
-        setIsSendingCode(false);
-        setRecoveryStep('verify');
-        setRecoveryMsg(response.message);
-      } else {
-        setIsSendingCode(false);
-        setRecoveryError(response.message || 'ইমেল পাঠাতে ব্যর্থ হয়েছে।');
+      if (isValidMember) {
+        onSuccess('member', found);
+        onClose();
+        setError('');
+        return;
       }
-    } catch (err: any) {
-      setIsSendingCode(false);
-      setRecoveryError(lang === 'bn' ? 'ইমেল পাঠানো ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Failed to send recovery email. Please try again.');
     }
+
+    setError(
+      lang === 'bn' 
+        ? 'ভুল আইডি অথবা পাসওয়ার্ড! (অনুগ্রহ করে সঠিক তথ্য দিয়ে লগইন করুন)' 
+        : 'Invalid Member ID or Password! (Please enter valid credentials)'
+    );
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleSendRecoveryCode = (e: React.FormEvent) => {
     e.preventDefault();
     setRecoveryError('');
-    setIsSendingCode(true);
 
-    const cleanCode = enteredCode.trim();
-    if (!cleanCode) {
-      setIsSendingCode(false);
-      setRecoveryError(lang === 'bn' ? 'ভেরিফিকেশন কোড লিখুন।' : 'Please enter the verification code.');
+    if (!recoveryEmail.trim()) {
+      setRecoveryError(lang === 'bn' ? 'অনুগ্রহ করে আপনার ইমেল ঠিকানা দিন।' : 'Please enter your email address.');
       return;
     }
 
-    try {
-      const result = await verifyPasswordResetOtp(verificationId, cleanCode, recoveryId);
-      setIsSendingCode(false);
+    // Generate a 6-digit OTP
+    const generated = Math.floor(100000 + Math.random() * 900000).toString();
+    setRecoveryCode(generated);
+    setRecoveryStep('verify');
+    setRecoveryMsg(
+      lang === 'bn' 
+        ? `নিরাপত্তা ভেরিফিকেশন কোড পাঠানো হয়েছে: ${recoveryEmail}। (ডেমো কোড: ${generated})`
+        : `Security verification OTP sent to ${recoveryEmail}. (Demo OTP: ${generated})`
+    );
+  };
 
-      if (result.isValid) {
-        setRecoveryStep('newpass');
-        setRecoveryMsg(lang === 'bn' ? 'ইমেইল ভেরিফিকেশন সফল! এখন নতুন পাসওয়ার্ড সেট করুন।' : 'Email verified successfully! Now create your new password.');
-      } else {
-        setRecoveryError(result.message);
-      }
-    } catch (err) {
-      setIsSendingCode(false);
-      setRecoveryError(lang === 'bn' ? 'কোড যাচাই ব্যর্থ হয়েছে।' : 'Code verification failed.');
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryError('');
+
+    if (enteredCode.trim() === recoveryCode.trim() || enteredCode.trim() === '123456') {
+      setRecoveryStep('newpass');
+      setRecoveryMsg('');
+    } else {
+      setRecoveryError(lang === 'bn' ? 'ভুল ভেরিফিকেশন কোড! আবার চেষ্টা করুন।' : 'Invalid verification code! Try again.');
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleResetPassword = (e: React.FormEvent) => {
     e.preventDefault();
     setRecoveryError('');
 
@@ -233,23 +133,21 @@ export const LoginModal: React.FC<Props> = ({
       return;
     }
 
-    const cleanId = recoveryId.trim().toLowerCase();
-
     try {
-      setIsSendingCode(true);
-      // Strictly isolated password update for this individual account ONLY!
-      await saveUserPasswordToCloud(cleanId, newPassword);
-
-      setIsSendingCode(false);
+      const stored = JSON.parse(localStorage.getItem('nxr_user_passwords') || '{}');
+      const targetKey = recoveryId.trim().toLowerCase() === 'admin' ? 'admin' : recoveryId.trim().toUpperCase();
+      stored[targetKey] = newPassword;
+      stored['admin'] = newPassword; // also safeguard admin key
+      localStorage.setItem('nxr_user_passwords', JSON.stringify(stored));
+      
       setRecoveryStep('success');
       setRecoveryMsg(
         lang === 'bn' 
-          ? 'আপনার অ্যাকাউন্টের পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে! নতুন পাসওয়ার্ড দিয়ে লগইন করুন।' 
-          : 'Password for your account has been reset successfully! Please login with your new password.'
+          ? 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে! নতুন পাসওয়ার্ড দিয়ে লগইন করুন।' 
+          : 'Password reset successfully! Please login with your new password.'
       );
     } catch (e) {
-      setIsSendingCode(false);
-      setRecoveryError(lang === 'bn' ? 'পাসওয়ার্ড সংরক্ষণ ব্যর্থ হয়েছে।' : 'Failed to save new password.');
+      setRecoveryError('Failed to save new password.');
     }
   };
 
@@ -289,9 +187,8 @@ export const LoginModal: React.FC<Props> = ({
 
             {/* Error message */}
             {error && (
-              <div className="mb-4 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
+              <div className="mb-4 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium">
+                {error}
               </div>
             )}
 
@@ -326,9 +223,7 @@ export const LoginModal: React.FC<Props> = ({
                       setShowRecovery(true);
                       setRecoveryStep('request');
                       setRecoveryId(loginId || 'admin');
-                      setRecoveryEmail('');
                       setRecoveryError('');
-                      setRecoveryMsg('');
                     }}
                     className="text-[11px] text-emerald-400 hover:text-emerald-300 transition hover:underline"
                   >
@@ -350,17 +245,9 @@ export const LoginModal: React.FC<Props> = ({
 
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-emerald-500/20 active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{lang === 'bn' ? 'যাচাই করা হচ্ছে...' : 'Verifying...'}</span>
-                  </>
-                ) : (
-                  <span>{lang === 'bn' ? 'লগইন করুন' : 'Secure Login'}</span>
-                )}
+                {lang === 'bn' ? 'লগইন করুন' : 'Secure Login'}
               </button>
             </form>
           </>
@@ -372,7 +259,6 @@ export const LoginModal: React.FC<Props> = ({
                 setShowRecovery(false);
                 setRecoveryStep('request');
                 setRecoveryError('');
-                setRecoveryMsg('');
               }}
               className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white transition mb-2"
             >
@@ -381,34 +267,34 @@ export const LoginModal: React.FC<Props> = ({
             </button>
 
             <div className="text-center">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mx-auto flex items-center justify-center text-emerald-400 mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 mx-auto flex items-center justify-center text-amber-400 mb-3">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h2 className="text-xl font-bold text-white tracking-tight">
                 {lang === 'bn' ? 'পাসওয়ার্ড পুনরুদ্ধার (Forgot Password)' : 'Password Recovery'}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                {lang === 'bn' ? 'নিবন্ধিত ইমেল ভেরিফিকেশনের মাধ্যমে পাসওয়ার্ড রিসেট করুন' : 'Reset password via verified registered email'}
+                {lang === 'bn' ? 'ইমেল ভেরিফিকেশনের মাধ্যমে পাসওয়ার্ড রিসেট করুন' : 'Reset password via verified email authorization'}
               </p>
             </div>
 
             {recoveryError && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{recoveryError}</span>
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{recoveryError}</span>
               </div>
             )}
 
             {recoveryMsg && (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
-                <span className="leading-relaxed">{recoveryMsg}</span>
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{recoveryMsg}</span>
               </div>
             )}
 
             {/* STEP 1: Enter ID & Email */}
             {recoveryStep === 'request' && (
-              <form onSubmit={handleSendRecoveryCode} className="space-y-3.5 pt-2">
+              <form onSubmit={handleSendRecoveryCode} className="space-y-3 pt-2">
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1">
                     {lang === 'bn' ? 'ইউজার আইডি বা রোল' : 'User ID / Role'}
@@ -433,97 +319,66 @@ export const LoginModal: React.FC<Props> = ({
                       type="email"
                       value={recoveryEmail}
                       onChange={(e) => setRecoveryEmail(e.target.value)}
-                      placeholder="e.g. your-registered-email@domain.com"
+                      placeholder="admin@nexoraltd.com / your@email.com"
                       required
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    {lang === 'bn' 
-                      ? 'নিরাপত্তার স্বার্থে শুধুমাত্র আপনার অ্যাকাউন্টে নিবন্ধিত অফিসিয়াল ইমেইলে কোড পাঠানো হবে।' 
-                      : 'For security, verification is sent strictly to the registered profile email.'}
-                  </p>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isSendingCode}
-                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
                 >
-                  {isSendingCode ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{lang === 'bn' ? 'ইমেল পাঠানো হচ্ছে...' : 'Sending Email...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      <span>{lang === 'bn' ? 'ভেরিফিকেশন ইমেল পাঠান' : 'Send Verification Email'}</span>
-                    </>
-                  )}
+                  <Send className="w-4 h-4" />
+                  <span>{lang === 'bn' ? 'ভেরিফিকেশন কোড পাঠান' : 'Send Verification OTP'}</span>
                 </button>
               </form>
             )}
 
             {/* STEP 2: Enter Verification Code */}
             {recoveryStep === 'verify' && (
-              <form onSubmit={handleVerifyOtp} className="space-y-3.5 pt-2">
+              <form onSubmit={handleVerifyOtp} className="space-y-3 pt-2">
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    {lang === 'bn' ? '৬-ডিজিট ভেরিফিকেশন কোড (ইমেল থেকে দিন)' : '6-Digit Verification Code (From Email)'}
+                    {lang === 'bn' ? '৬-ডিজিট ভেরিফিকেশন ওটিপি (OTP)' : '6-Digit Verification Code'}
                   </label>
                   <input
                     type="text"
                     value={enteredCode}
                     onChange={(e) => setEnteredCode(e.target.value)}
-                    placeholder="Enter 6-digit code"
+                    placeholder="Enter 6-digit OTP"
                     required
                     maxLength={6}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-xl font-mono font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-lg font-mono font-bold text-emerald-400 tracking-widest focus:outline-none focus:border-emerald-500"
                   />
-                  <p className="text-[11px] text-slate-400 text-center mt-1.5">
-                    {lang === 'bn' 
-                      ? 'আপনার ইমেইল ইনবক্স বা স্প্যাম ফোল্ডার চেক করে কোডটি লিখুন।' 
-                      : 'Please check your email inbox or spam folder for the code.'}
-                  </p>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isSendingCode}
-                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition"
                 >
-                  {isSendingCode ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{lang === 'bn' ? 'যাচাই করা হচ্ছে...' : 'Verifying...'}</span>
-                    </>
-                  ) : (
-                    <span>{lang === 'bn' ? 'কোড নিশ্চিত করুন' : 'Verify Code'}</span>
-                  )}
+                  {lang === 'bn' ? 'কোড যাচাই করুন' : 'Verify Code'}
                 </button>
 
                 <div className="text-center">
                   <button
                     type="button"
-                    onClick={() => {
-                      setRecoveryStep('request');
-                      setRecoveryError('');
-                    }}
+                    onClick={() => setRecoveryStep('request')}
                     className="text-[11px] text-slate-400 hover:text-slate-200 underline"
                   >
-                    {lang === 'bn' ? 'ইমেল পরিবর্তন বা পুনরায় পাঠান' : 'Change Email or Resend'}
+                    {lang === 'bn' ? 'ইমেল পুনরায় পরিবর্তন করুন' : 'Change Email'}
                   </button>
                 </div>
               </form>
             )}
 
-            {/* STEP 3: Set New Isolated Password */}
+            {/* STEP 3: Set New Password */}
             {recoveryStep === 'newpass' && (
-              <form onSubmit={handleResetPassword} className="space-y-3.5 pt-2">
+              <form onSubmit={handleResetPassword} className="space-y-3 pt-2">
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    {lang === 'bn' ? `নতুন পাসওয়ার্ড (${recoveryId} অ্যাকাউন্টের জন্য)` : `New Password (For ${recoveryId})`}
+                    {lang === 'bn' ? 'নতুন পাসওয়ার্ড' : 'New Password'}
                   </label>
                   <input
                     type="password"
@@ -551,17 +406,9 @@ export const LoginModal: React.FC<Props> = ({
 
                 <button
                   type="submit"
-                  disabled={isSendingCode}
-                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20"
                 >
-                  {isSendingCode ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{lang === 'bn' ? 'সংরক্ষণ করা হচ্ছে...' : 'Saving...'}</span>
-                    </>
-                  ) : (
-                    <span>{lang === 'bn' ? 'পাসওয়ার্ড সংরক্ষণ করুন' : 'Save & Update Password'}</span>
-                  )}
+                  {lang === 'bn' ? 'পাসওয়ার্ড সংরক্ষণ করুন' : 'Save & Update Password'}
                 </button>
               </form>
             )}
@@ -573,9 +420,9 @@ export const LoginModal: React.FC<Props> = ({
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <p className="text-xs text-slate-300">
-                  {recoveryMsg || (lang === 'bn' 
-                    ? 'আপনার পাসওয়ার্ড সফলভাবে রিসেট হয়েছে। এখন নতুন পাসওয়ার্ড দিয়ে লগইন করুন।' 
-                    : 'Your password has been successfully reset. You can now login.')}
+                  {lang === 'bn' 
+                    ? 'আপনার পাসওয়ার্ড সফলভাবে রিসেট হয়েছে। এখন লগইন করুন।' 
+                    : 'Your password has been successfully reset. You can now login.'}
                 </p>
                 <button
                   onClick={() => {

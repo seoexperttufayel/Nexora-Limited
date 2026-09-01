@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Member, Installment, Language, LedgerTransaction, PaymentAccountConfig, AdminProfile } from '../types';
+import { Member, Installment, Language, LedgerTransaction, PaymentAccountConfig } from '../types';
 import { translations } from '../data/translations';
 import { AdminPaymentAccountsModal } from './AdminPaymentAccountsModal';
 import { 
   ShieldCheck, Wallet, Users, Clock, CheckCircle2, 
   XCircle, Printer, FileText, Check, X,
   FileSpreadsheet, TrendingUp, Building2,
-  Calendar, CreditCard, Landmark, ArrowUpRight, ArrowDownLeft, UserCheck, UserCog
+  Calendar, CreditCard, Landmark, ArrowUpRight, ArrowDownLeft,
+  ChevronRight, Sparkles, AlertCircle, Info, Layers
 } from 'lucide-react';
 
 interface Props {
@@ -20,13 +21,13 @@ interface Props {
   onAddLedgerTransaction?: (txn: LedgerTransaction) => void;
   onDeleteLedgerTransaction?: (id: string) => void;
   paymentAccounts?: PaymentAccountConfig[];
-  adminProfile?: AdminProfile;
-  onOpenAdminProfile?: () => void;
   onUpdatePaymentAccount?: (acc: PaymentAccountConfig) => void;
   onAddPaymentAccount?: (acc: PaymentAccountConfig) => void;
   onDeletePaymentAccount?: (id: string) => void;
   onResetPaymentAccounts?: () => void;
   onNavigateToLedger?: () => void;
+  onNavigateToInstallmentsQueue?: () => void;
+  onNavigateToGovernance?: () => void;
 }
 
 export const AdminDashboard: React.FC<Props> = ({
@@ -38,18 +39,24 @@ export const AdminDashboard: React.FC<Props> = ({
   onViewReceipt,
   ledgerTransactions = [],
   paymentAccounts = [],
-  adminProfile,
-  onOpenAdminProfile,
   onUpdatePaymentAccount,
   onAddPaymentAccount,
   onDeletePaymentAccount,
   onResetPaymentAccounts,
-  onNavigateToLedger
+  onNavigateToLedger,
+  onNavigateToInstallmentsQueue,
+  onNavigateToGovernance
 }) => {
   const t = translations[lang];
   const [showPaymentAccountsModal, setShowPaymentAccountsModal] = useState(false);
 
-  // Modals & Confirmation states
+  // Interactive Stat Card Modals
+  const [showCapitalModal, setShowCapitalModal] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [showEquityModal, setShowEquityModal] = useState(false);
+
+  // Quick reject state
   const [rejectModalId, setRejectModalId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
@@ -142,17 +149,6 @@ export const AdminDashboard: React.FC<Props> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 relative z-10">
-          {onOpenAdminProfile && (
-            <button
-              onClick={onOpenAdminProfile}
-              className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 text-xs sm:text-sm font-semibold transition shadow-md shadow-emerald-500/10"
-              title="Manage Admin Profile & Credentials"
-            >
-              <UserCog className="w-4 h-4 text-emerald-400" />
-              <span>{lang === 'bn' ? 'অ্যাডমিন প্রোফাইল' : 'Admin Profile'}</span>
-            </button>
-          )}
-
           {onNavigateToLedger && (
             <button
               onClick={onNavigateToLedger}
@@ -191,14 +187,20 @@ export const AdminDashboard: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* CORE 4 EXECUTIVE METRIC CARDS */}
+      {/* CORE 4 EXECUTIVE METRIC CARDS (WITH INTERACTIVE CLICKABLE ICONS) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg relative overflow-hidden group">
+        
+        {/* 1. Total Capital Card */}
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.totalCapital}</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+            <button
+              onClick={() => setShowCapitalModal(true)}
+              className="w-8 h-8 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/25 flex items-center justify-center text-emerald-400 transition cursor-pointer border border-emerald-500/20 active:scale-95"
+              title={lang === 'bn' ? 'মূলধন ও ট্রেজারি বিস্তারিত দেখুন' : 'View Capital & Treasury Breakdown'}
+            >
               <Wallet className="w-4 h-4" />
-            </div>
+            </button>
           </div>
           <p className="text-3xl font-black text-emerald-400 font-mono">
             ৳ {totalCapitalVerified.toLocaleString()}
@@ -214,14 +216,19 @@ export const AdminDashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg relative overflow-hidden group">
+        {/* 2. Pending Requests Card */}
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.pendingReq}</span>
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-              pendingInstallments.length > 0 ? 'bg-amber-500/20 text-amber-300 animate-pulse' : 'bg-slate-800 text-slate-400'
-            }`}>
+            <button
+              onClick={() => setShowPendingModal(true)}
+              className={`w-8 h-8 rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95 ${
+                pendingInstallments.length > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse hover:bg-amber-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              }`}
+              title={lang === 'bn' ? 'অপেক্ষমাণ কিস্তির তালিকা ও অনুমোদন' : 'View Pending Queue & Approvals'}
+            >
               <Clock className="w-4 h-4" />
-            </div>
+            </button>
           </div>
           <p className="text-3xl font-black text-amber-400 font-mono">
             {pendingInstallments.length}
@@ -231,12 +238,17 @@ export const AdminDashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
+        {/* 3. Monthly Expected Card */}
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg hover:border-blue-500/40 transition">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.totalExpectedMonthly}</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+            <button
+              onClick={() => setShowTargetModal(true)}
+              className="w-8 h-8 rounded-xl bg-blue-500/10 hover:bg-blue-500/25 flex items-center justify-center text-blue-400 transition cursor-pointer border border-blue-500/20 active:scale-95"
+              title={lang === 'bn' ? 'মাসিক ফান্ড লক্ষ্যমাত্রা ও অগ্রগতি' : 'View Monthly Target & Breakdown'}
+            >
               <Calendar className="w-4 h-4" />
-            </div>
+            </button>
           </div>
           <p className="text-3xl font-black text-white font-mono">
             ৳ {monthlySubscriptionTarget.toLocaleString()}
@@ -246,12 +258,17 @@ export const AdminDashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
+        {/* 4. Total Founders / Shareholders Card */}
+        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg hover:border-purple-500/40 transition">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.totalFounders}</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+            <button
+              onClick={() => setShowEquityModal(true)}
+              className="w-8 h-8 rounded-xl bg-purple-500/10 hover:bg-purple-500/25 flex items-center justify-center text-purple-400 transition cursor-pointer border border-purple-500/20 active:scale-95"
+              title={lang === 'bn' ? 'প্রতিষ্ঠাতা ও শেয়ারহোল্ডারদের ইকুইটি' : 'View Founders & Equity Distribution'}
+            >
               <Users className="w-4 h-4" />
-            </div>
+            </button>
           </div>
           <p className="text-3xl font-black text-white font-mono">
             {activeMembers.length}
@@ -262,247 +279,560 @@ export const AdminDashboard: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 1. PRIMARY APPROVAL QUEUE (অনুমোদন কিউ) */}
-      {/* ========================================================================= */}
-          <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">{t.approvalQueue}</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {lang === 'bn' 
-                      ? 'সদস্যদের জমা দেওয়া কিস্তির পেমেন্ট ও TrxID যাচাই করে অনুমোদন বা প্রত্যাখ্যান করুন' 
-                      : 'Review member payment proof and transaction IDs for formal ledger approval'}
-                  </p>
-                </div>
-              </div>
-
-              <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono ${
-                pendingInstallments.length > 0
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-              }`}>
-                {pendingInstallments.length} {lang === 'bn' ? 'টি অপেক্ষমাণ' : 'Pending'}
-              </span>
+      {/* PENDING APPROVAL QUEUE QUICK BANNER */}
+      {pendingInstallments.length > 0 && (
+        <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 shrink-0">
+              <Clock className="w-5 h-5 animate-pulse" />
             </div>
-
-            {pendingInstallments.length === 0 ? (
-              <div className="text-center py-12 bg-slate-950/60 rounded-2xl border border-slate-800/80">
-                <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-60" />
-                <p className="text-sm font-semibold text-slate-300">{t.noPending}</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {lang === 'bn' ? 'সব কিস্তি যাচাই ও অনুমোদন সম্পন্ন হয়েছে।' : 'All pending installment submissions have been processed.'}
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[11px] font-semibold border-b border-slate-800">
-                    <tr>
-                      <th className="p-4">{t.receiptNo}</th>
-                      <th className="p-4">{t.member}</th>
-                      <th className="p-4">{t.monthYear}</th>
-                      <th className="p-4">{t.amount}</th>
-                      <th className="p-4">{t.paymentMethod} / TrxID</th>
-                      <th className="p-4">{t.date}</th>
-                      <th className="p-4 text-right">{t.action}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {pendingInstallments.map((inst) => (
-                      <tr key={inst.id} className="hover:bg-slate-850/60 transition">
-                        <td className="p-4 font-mono font-bold text-emerald-400">
-                          {inst.receiptNo || inst.id}
-                        </td>
-                        <td className="p-4">
-                          <p className="font-bold text-white">
-                            {lang === 'bn' ? (inst.memberNameBn || inst.memberName) : inst.memberName}
-                          </p>
-                          <p className="text-[11px] text-slate-400 font-mono">{inst.memberId}</p>
-                        </td>
-                        <td className="p-4 font-medium">
-                          {inst.month} {inst.year}
-                        </td>
-                        <td className="p-4">
-                          <span className="text-sm font-bold text-white font-mono">৳ {inst.amount.toLocaleString()}</span>
-                          {inst.lateFee > 0 && (
-                            <span className="block text-[10px] text-amber-400 font-mono">
-                              (Late: +৳{inst.lateFee})
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <p className="text-slate-200">{inst.method}</p>
-                          <p className="font-mono text-emerald-400 font-bold text-[11px]">{inst.trxId}</p>
-                        </td>
-                        <td className="p-4 text-slate-400 font-mono">
-                          {inst.date}
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <button
-                              onClick={() => onViewReceipt(inst)}
-                              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-                              title={t.viewReceipt}
-                            >
-                              <FileText className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => onApprove(inst.id)}
-                              className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition flex items-center space-x-1 shadow-md shadow-emerald-500/20"
-                            >
-                              <Check className="w-4 h-4" />
-                              <span>{t.approve}</span>
-                            </button>
-                            <button
-                              onClick={() => setRejectModalId(inst.id)}
-                              className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold transition flex items-center space-x-1"
-                            >
-                              <X className="w-4 h-4" />
-                              <span>{t.reject}</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-white">
+                {lang === 'bn' ? `${pendingInstallments.length} টি নতুন কিস্তি অনুমোদনের অপেক্ষায় রয়েছে` : `${pendingInstallments.length} Pending Installment Verifications`}
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                {lang === 'bn' 
+                  ? `মোট ৳ ${totalPendingAmount.toLocaleString()} টাকার কিস্তি ও TrxID যাচাইয়ের জন্য কিউতে রয়েছে।` 
+                  : `Total ৳ ${totalPendingAmount.toLocaleString()} awaiting verification in Installments Approval Queue.`}
+              </p>
+            </div>
           </div>
 
-          {/* ========================================================================= */}
-          {/* 2. RECENT APPROVED LEDGER & GOVERNANCE SUMMARY */}
-          {/* ========================================================================= */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Recent 6 Verified Deposits */}
-            <div className="lg:col-span-2 p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                    <CheckCircle2 className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => setShowPendingModal(true)}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-xl transition"
+            >
+              {lang === 'bn' ? 'দ্রুত পর্যালোচনা' : 'Quick Review'}
+            </button>
+            {onNavigateToInstallmentsQueue && (
+              <button
+                onClick={onNavigateToInstallmentsQueue}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 transition flex items-center gap-1.5"
+              >
+                <span>{lang === 'bn' ? 'অনুমোদন কিউতে যান' : 'Go to Approval Queue'}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* RECENT APPROVED LEDGER & GOVERNANCE SUMMARY */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Recent 6 Verified Deposits */}
+        <div className="lg:col-span-2 p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {lang === 'bn' ? 'সাম্প্রতিক অনুমোদিত কিস্তিসমূহ' : 'Recent Verified Deposits'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {lang === 'bn' ? 'সরাসরি ডিজিটাল রসিদ ও ভাউচার দেখুন' : 'Latest verified installment money receipts'}
+                </p>
+              </div>
+            </div>
+
+            <span className="text-xs font-mono text-emerald-400 font-semibold">
+              {approvedInstallments.length} Verified
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {recentApproved.map((inst) => (
+              <div
+                key={inst.id}
+                className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold font-mono text-xs">
+                    {inst.memberId.replace('NXR-', '')}
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">
-                      {lang === 'bn' ? 'সাম্প্রতিক অনুমোদিত কিস্তিসমূহ' : 'Recent Verified Deposits'}
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      {lang === 'bn' ? 'সরাসরি ডিজিটাল রসিদ ও ভাউচার দেখুন' : 'Latest verified installment money receipts'}
+                    <div className="flex items-center space-x-2">
+                      <p className="text-xs sm:text-sm font-bold text-white">
+                        {lang === 'bn' ? (inst.memberNameBn || inst.memberName) : inst.memberName}
+                      </p>
+                      <span className="text-[10px] text-slate-400 font-mono">({inst.memberId})</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {inst.month} {inst.year} • {inst.method} • <span className="font-mono text-slate-300">{inst.date}</span>
                     </p>
                   </div>
                 </div>
 
-                <span className="text-xs font-mono text-emerald-400 font-semibold">
-                  {approvedInstallments.length} Verified
+                <div className="flex items-center space-x-3 shrink-0">
+                  <div className="text-right">
+                    <span className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
+                      ৳ {inst.amount.toLocaleString()}
+                    </span>
+                    <span className="block text-[10px] text-emerald-500 font-semibold">
+                      Verified
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => onViewReceipt(inst)}
+                    className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition"
+                    title={t.viewReceipt}
+                  >
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Committee Structure & Equity Ratio */}
+        <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
+          <div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-emerald-400" />
+              <span>{lang === 'bn' ? 'কমিটি ইকুইটি ও মূলধন অনুপাত' : 'Committee Equity Breakdown'}</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {lang === 'bn' ? 'ব্যবস্থাপনা ও উপদেষ্টা পরিষদের ক্যাপিটাল শেয়ার' : 'Management vs Advisory Council Distribution'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {/* Management Committee */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-white">{lang === 'bn' ? 'ব্যবস্থাপনা কমিটি (সিলেট)' : 'Management (Domestic)'}</span>
+                <span className="font-mono font-bold text-emerald-400">{managementShares}% Share</span>
+              </div>
+              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(managementShares / 80) * 100}%` }} />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                <span>{managementMembers.length} Members</span>
+                <span className="font-mono text-white font-semibold">৳ {managementCapital.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Advisory Council */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-white">{lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাসী)' : 'Advisory (Overseas)'}</span>
+                <span className="font-mono font-bold text-emerald-400">{advisoryShares}% Share</span>
+              </div>
+              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${(advisoryShares / 80) * 100}%` }} />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                <span>{advisoryMembers.length} Members</span>
+                <span className="font-mono text-white font-semibold">৳ {advisoryCapital.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              {lang === 'bn' 
+                ? 'মোট বরাদ্দকৃত ৮০% প্রতিষ্ঠাতা ইকুইটি অনুমোদিত শরিয়াহ নীতি অনুযায়ী সংকলিত।' 
+                : '80% Founder Equity compiled under verified Shariah-compliant bylaws.'}
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 1. CAPITAL & TREASURY MODAL (Triggered by Wallet icon) */}
+      {/* ========================================================================= */}
+      {showCapitalModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4"
+          onClick={() => setShowCapitalModal(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {lang === 'bn' ? 'মূলধন ও ট্রেজারি অডিট বিশ্লেষণ' : 'Capital & Treasury Breakdown'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'bn' ? 'অনুমোদিত কিস্তি, লেজার ক্রেডিট/ডেবিট ও মোট রিজার্ভ' : 'Verified installments, corporate ledger, and active reserve'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowCapitalModal(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">{lang === 'bn' ? 'অনুমোদিত কিস্তি মোট' : 'Approved Deposits'}</span>
+                <span className="text-xl font-bold text-emerald-400 font-mono mt-1 block">
+                  ৳ {approvedInstallments.reduce((s, i) => s + i.amount, 0).toLocaleString()}
                 </span>
               </div>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">{lang === 'bn' ? 'লেজার মোট ব্যয়' : 'Ledger Debits'}</span>
+                <span className="text-xl font-bold text-rose-400 font-mono mt-1 block">
+                  ৳ {totalLedgerDebits.toLocaleString()}
+                </span>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/20 bg-emerald-950/10">
+                <span className="text-[10px] text-emerald-400 uppercase font-semibold block">{lang === 'bn' ? 'ট্রেজারি নেট ব্যালেন্স' : 'Net Treasury Reserve'}</span>
+                <span className="text-xl font-bold text-emerald-300 font-mono mt-1 block">
+                  ৳ {totalCapitalVerified.toLocaleString()}
+                </span>
+              </div>
+            </div>
 
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                {lang === 'bn' ? 'কমিটি অনুযায়ী মূলধন অংশ' : 'Committee Contributions'}
+              </h4>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center text-xs">
+                <div>
+                  <span className="font-bold text-white block">{lang === 'bn' ? 'ব্যবস্থাপনা পরিষদ (সিলেট)' : 'Management (Domestic)'}</span>
+                  <span className="text-slate-400 text-[11px]">{managementMembers.length} Members • {managementShares}% Equity</span>
+                </div>
+                <span className="font-mono font-bold text-emerald-400 text-sm">৳ {managementCapital.toLocaleString()}</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between items-center text-xs">
+                <div>
+                  <span className="font-bold text-white block">{lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাসী)' : 'Advisory (Overseas)'}</span>
+                  <span className="text-slate-400 text-[11px]">{advisoryMembers.length} Members • {advisoryShares}% Equity</span>
+                </div>
+                <span className="font-mono font-bold text-emerald-400 text-sm">৳ {advisoryCapital.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-between items-center border-t border-slate-800">
+              {onNavigateToLedger && (
+                <button
+                  onClick={() => {
+                    setShowCapitalModal(false);
+                    onNavigateToLedger();
+                  }}
+                  className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+                >
+                  <Landmark className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'সম্পূর্ণ আর্থিক লেজারে যান' : 'Go to Financial Ledger'}</span>
+                </button>
+              )}
+              <button
+                onClick={() => setShowCapitalModal(false)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl ml-auto"
+              >
+                {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. PENDING REQUESTS MODAL (Triggered by Clock icon) */}
+      {/* ========================================================================= */}
+      {showPendingModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4"
+          onClick={() => setShowPendingModal(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {lang === 'bn' ? 'অপেক্ষমাণ কিস্তি যাচাই ও দ্রুত পর্যালোচনা' : 'Pending Installment Approvals'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'bn' ? `মোট ${pendingInstallments.length} টি কিস্তি ভেরিফিকেশনের জন্য অপেক্ষমাণ` : `${pendingInstallments.length} installment submissions pending review`}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPendingModal(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {pendingInstallments.length === 0 ? (
+              <div className="text-center py-12 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto opacity-80" />
+                <p className="text-sm font-bold text-slate-200">{lang === 'bn' ? 'কোনো অপেক্ষমাণ কিস্তি নেই!' : 'No Pending Submissions!'}</p>
+                <p className="text-xs text-slate-400">{lang === 'bn' ? 'সব কিস্তি যাচাই ও অনুমোদন সম্পন্ন হয়েছে।' : 'All pending installment submissions have been verified.'}</p>
+              </div>
+            ) : (
               <div className="space-y-3">
-                {recentApproved.map((inst) => (
+                {pendingInstallments.map((inst) => (
                   <div
                     key={inst.id}
-                    className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition flex items-center justify-between gap-4"
+                    className="p-4 rounded-2xl bg-slate-950 border border-amber-500/20 hover:border-amber-500/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                   >
-                    <div className="flex items-center space-x-3.5">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold font-mono text-xs">
-                        {inst.memberId.replace('NXR-', '')}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-amber-400 font-bold">{inst.receiptNo || inst.id}</span>
+                        <span className="text-slate-500">•</span>
+                        <span className="text-white font-bold">{lang === 'bn' ? (inst.memberNameBn || inst.memberName) : inst.memberName}</span>
+                        <span className="text-slate-400 font-mono text-[11px]">({inst.memberId})</span>
                       </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <p className="text-xs sm:text-sm font-bold text-white">
-                            {lang === 'bn' ? (inst.memberNameBn || inst.memberName) : inst.memberName}
-                          </p>
-                          <span className="text-[10px] text-slate-400 font-mono">({inst.memberId})</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          {inst.month} {inst.year} • {inst.method} • <span className="font-mono text-slate-300">{inst.date}</span>
-                        </p>
-                      </div>
+                      <p className="text-slate-300">
+                        {inst.month} {inst.year} • <strong className="text-emerald-400 font-mono">৳ {inst.amount.toLocaleString()}</strong> via {inst.method}
+                        <span className="font-mono text-amber-300 ml-2 font-bold">(TrxID: {inst.trxId})</span>
+                      </p>
                     </div>
 
-                    <div className="flex items-center space-x-3 shrink-0">
-                      <div className="text-right">
-                        <span className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
-                          ৳ {inst.amount.toLocaleString()}
-                        </span>
-                        <span className="block text-[10px] text-emerald-500 font-semibold">
-                          Verified
-                        </span>
-                      </div>
-
+                    <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
                       <button
-                        onClick={() => onViewReceipt(inst)}
-                        className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition"
-                        title={t.viewReceipt}
+                        onClick={() => {
+                          setShowPendingModal(false);
+                          onViewReceipt(inst);
+                        }}
+                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+                        title="View Receipt Voucher"
                       >
                         <FileText className="w-4 h-4 text-emerald-400" />
                       </button>
+                      <button
+                        onClick={() => onApprove(inst.id)}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold flex items-center gap-1 shadow-md shadow-emerald-500/20"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{t.approve}</span>
+                      </button>
+                      <button
+                        onClick={() => setRejectModalId(inst.id)}
+                        className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold flex items-center gap-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>{t.reject}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-between items-center border-t border-slate-800">
+              {onNavigateToInstallmentsQueue && (
+                <button
+                  onClick={() => {
+                    setShowPendingModal(false);
+                    onNavigateToInstallmentsQueue();
+                  }}
+                  className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'অনুমোদন কিউ পেজে যান' : 'Go to Full Queue Tab'}</span>
+                </button>
+              )}
+              <button
+                onClick={() => setShowPendingModal(false)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl ml-auto"
+              >
+                {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. MONTHLY TARGET BREAKDOWN MODAL (Triggered by Calendar icon) */}
+      {/* ========================================================================= */}
+      {showTargetModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4"
+          onClick={() => setShowTargetModal(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {lang === 'bn' ? 'মাসিক চাঁদা ও তহবিল লক্ষ্যমাত্রা' : 'Monthly Target & Collection Metrics'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'bn' ? '৮০% শেয়ার ইকুইটি ভিত্তিক প্রতি মাসের নির্ধারিত ফান্ড হিসাব' : 'Expected monthly fund collection for 80% issued equity'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowTargetModal(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-950 border border-blue-500/20 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-300 font-semibold">{lang === 'bn' ? 'প্রতি শেয়ার মাসিক কিস্তি:' : 'Rate per Share (Monthly):'}</span>
+                <span className="text-blue-400 font-mono font-bold text-sm">৳ 1,000 / Share</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-300 font-semibold">{lang === 'bn' ? 'মোট বরাদ্দকৃত ইকুইটি শেয়ার:' : 'Total Issued Equity Shares:'}</span>
+                <span className="text-white font-mono font-bold text-sm">{totalSoldShares} Shares (80%)</span>
+              </div>
+              <div className="border-t border-slate-800 pt-3 flex justify-between items-center">
+                <span className="text-sm font-bold text-white">{lang === 'bn' ? 'মাসিক প্রত্যাশিত সর্বমোট ফান্ড:' : 'Expected Monthly Target:'}</span>
+                <span className="text-2xl font-black text-blue-400 font-mono">৳ {monthlySubscriptionTarget.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                {lang === 'bn' ? '১৩ জন উদ্যোক্তার মাসিক চাঁদা তালিকা' : '13 Shareholders Monthly Quota'}
+              </h4>
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {activeMembers.map((m) => (
+                  <div key={m.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2.5">
+                      <span className="font-mono text-emerald-400 font-bold">{m.id}</span>
+                      <span className="text-white font-semibold">{lang === 'bn' ? m.nameBn : m.name}</span>
+                    </div>
+                    <div className="text-right font-mono">
+                      <span className="text-slate-300 font-bold">{m.share}% Share</span>
+                      <span className="text-blue-400 ml-2 font-bold">৳ {(m.share * 1000).toLocaleString()}/mo</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Committee Structure & Equity Ratio */}
-            <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-emerald-400" />
-                  <span>{lang === 'bn' ? 'কমিটি ইকুইটি ও মূলধন অনুপাত' : 'Committee Equity Breakdown'}</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {lang === 'bn' ? 'ব্যবস্থাপনা ও উপদেষ্টা পরিষদের ক্যাপিটাল শেয়ার' : 'Management vs Advisory Council Distribution'}
-                </p>
-              </div>
+            <div className="pt-2 flex justify-end border-t border-slate-800">
+              <button
+                onClick={() => setShowTargetModal(false)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl"
+              >
+                {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className="space-y-4">
-                {/* Management Committee */}
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-white">{lang === 'bn' ? 'ব্যবস্থাপনা কমিটি (সিলেট)' : 'Management (Domestic)'}</span>
-                    <span className="font-mono font-bold text-emerald-400">{managementShares}% Share</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(managementShares / 80) * 100}%` }} />
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                    <span>{managementMembers.length} Members</span>
-                    <span className="font-mono text-white font-semibold">৳ {managementCapital.toLocaleString()}</span>
-                  </div>
+      {/* ========================================================================= */}
+      {/* 4. SHAREHOLDERS & EQUITY OVERVIEW MODAL (Triggered by Users icon) */}
+      {/* ========================================================================= */}
+      {showEquityModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4"
+          onClick={() => setShowEquityModal(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                  <Users className="w-5 h-5" />
                 </div>
-
-                {/* Advisory Council */}
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-white">{lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাসী)' : 'Advisory (Overseas)'}</span>
-                    <span className="font-mono font-bold text-emerald-400">{advisoryShares}% Share</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${(advisoryShares / 80) * 100}%` }} />
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                    <span>{advisoryMembers.length} Members</span>
-                    <span className="font-mono text-white font-semibold">৳ {advisoryCapital.toLocaleString()}</span>
-                  </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {lang === 'bn' ? '১৩ জন প্রতিষ্ঠাতা শেয়ারহোল্ডার ও ইকুইটি প্রোফাইল' : '13 Founding Shareholders & Equity Cap Table'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'bn' ? 'ব্যবস্থাপনা ও উপদেষ্টা পরিষদের পূর্ণাঙ্গ গঠনকাঠামো' : 'Full governance structure and equity allocation'}
+                  </p>
                 </div>
               </div>
+              <button 
+                onClick={() => setShowEquityModal(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>
-                  {lang === 'bn' 
-                    ? 'মোট বরাদ্দকৃত ৮০% প্রতিষ্ঠাতা ইকুইটি অনুমোদিত শরিয়াহ নীতি অনুযায়ী সংকলিত।' 
-                    : '80% Founder Equity compiled under verified Shariah-compliant bylaws.'}
-                </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/20 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-emerald-400">{lang === 'bn' ? 'ব্যবস্থাপনা পরিষদ (সিলেট)' : 'Management (Domestic)'}</span>
+                <p className="text-2xl font-black text-white font-mono">{managementShares}% Equity</p>
+                <p className="text-xs text-slate-400">{managementMembers.length} Founders Registered</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950 border border-purple-500/20 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-purple-400">{lang === 'bn' ? 'উপদেষ্টা পরিষদ (প্রবাসী)' : 'Advisory (Overseas)'}</span>
+                <p className="text-2xl font-black text-white font-mono">{advisoryShares}% Equity</p>
+                <p className="text-xs text-slate-400">{advisoryMembers.length} Founders Registered</p>
               </div>
             </div>
 
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {activeMembers.map((m) => (
+                <div key={m.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-mono font-bold text-emerald-400 text-xs">
+                      {m.id.replace('NXR-', '')}
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-white">{lang === 'bn' ? m.nameBn : m.name}</h5>
+                      <p className="text-[11px] text-slate-400">{lang === 'bn' ? m.designationBn : m.designationEn} • {m.phone}</p>
+                    </div>
+                  </div>
+                  <div className="text-right font-mono">
+                    <span className="px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 font-bold border border-purple-500/20">
+                      {m.share}% Share
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex justify-between items-center border-t border-slate-800">
+              {onNavigateToGovernance && (
+                <button
+                  onClick={() => {
+                    setShowEquityModal(false);
+                    onNavigateToGovernance();
+                  }}
+                  className="px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'গভর্ন্যান্স ও পরিষদ পাতায় যান' : 'Go to Governance View'}</span>
+                </button>
+              )}
+              <button
+                onClick={() => setShowEquityModal(false)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl ml-auto"
+              >
+                {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+              </button>
+            </div>
           </div>
+        </div>
+      )}
 
       {/* REJECT WITH REASON MODAL */}
       {rejectModalId && (

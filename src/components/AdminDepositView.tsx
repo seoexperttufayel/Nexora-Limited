@@ -3,12 +3,11 @@ import { Member, Installment, Language, PaymentAccountConfig } from '../types';
 import { translations } from '../data/translations';
 import { COMPANY_INFO } from '../data/initialData';
 import { INITIAL_PAYMENT_ACCOUNTS } from '../data/paymentAccounts';
-import { calculateInstallmentFine } from '../utils/fineCalculator';
 import { 
   Building2, Wallet, CheckCircle2, Clock, 
   Send, CreditCard, ShieldCheck, Timer, 
   Calendar, FileText, PlusCircle, AlertCircle, ArrowRight,
-  Lock, Trash2, RotateCcw, ShieldAlert, X, Scale, Sparkles, BookOpen
+  Lock, Trash2, RotateCcw, ShieldAlert, X
 } from 'lucide-react';
 
 interface Props {
@@ -41,29 +40,15 @@ export const AdminDepositView: React.FC<Props> = ({
     ? paymentAccounts.filter(a => a.isActive)
     : INITIAL_PAYMENT_ACCOUNTS.filter(a => a.isActive);
 
-  // Default month and current system date
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-  const monthsList = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  const currentMonthName = monthsList[now.getMonth()] || 'September';
-
   // Form State
   const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id || 'NXR-001');
-  const [month, setMonth] = useState(currentMonthName);
-  const [year, setYear] = useState(now.getFullYear() || 2026);
-  const [paymentDate, setPaymentDate] = useState<string>(todayStr);
+  const [month, setMonth] = useState('September');
+  const [year, setYear] = useState(2026);
   const defaultMethod = activeAccounts[0]
     ? (lang === 'bn' ? activeAccounts[0].titleBn : activeAccounts[0].titleEn)
     : 'Islami Bank Direct';
   const [method, setMethod] = useState(defaultMethod);
   const [trxId, setTrxId] = useState('');
-  const [notes, setNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successReceipt, setSuccessReceipt] = useState<Installment | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Update default method if activeAccounts changes
   useEffect(() => {
@@ -71,6 +56,12 @@ export const AdminDepositView: React.FC<Props> = ({
       setMethod(lang === 'bn' ? activeAccounts[0].titleBn : activeAccounts[0].titleEn);
     }
   }, [activeAccounts, lang]);
+  const [lateFee, setLateFee] = useState<number>(0);
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successReceipt, setSuccessReceipt] = useState<Installment | null>(null);
+  const [showTrashModal, setShowTrashModal] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Selected Member calculation
   const currentSelectedMember = members.find(m => m.id === selectedMemberId) || members[0] || {
@@ -84,21 +75,9 @@ export const AdminDepositView: React.FC<Props> = ({
     designationBn: ''
   };
 
-  // Base calculated installment strictly locked to 1% = 1,000 BDT (Clause 3.4)
+  // Base calculated installment strictly locked to 1% = 1000 BDT
   const lockedBaseAmount = (currentSelectedMember.share || 1) * 1000;
-
-  // Clause 4 Automated Fine Calculation (धारा ৪ অনুযায়ী স্বয়ংক্রিয় জরিমানা নির্ণয়)
-  const fineCalculationDate = paymentDate ? new Date(paymentDate) : now;
-  const fineResult = calculateInstallmentFine(
-    currentSelectedMember.share || 1, 
-    month, 
-    year, 
-    fineCalculationDate
-  );
-  const calculatedLateFee = fineResult.lateFee;
-  const isLate = fineResult.isLate;
-  const isFuture = fineResult.isFuture;
-  const totalLockedAmount = lockedBaseAmount + calculatedLateFee;
+  const totalLockedAmount = lockedBaseAmount + (Number(lateFee) || 0);
 
   // Real-time ticking clock
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
@@ -111,9 +90,9 @@ export const AdminDepositView: React.FC<Props> = ({
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const live = new Date();
-      setCurrentTime(live.toLocaleTimeString());
-      setCurrentDateString(live.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString());
+      setCurrentDateString(now.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -123,6 +102,11 @@ export const AdminDepositView: React.FC<Props> = ({
     return () => clearInterval(timer);
   }, [lang]);
 
+  const monthsList = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentSelectedMember) return;
@@ -130,23 +114,21 @@ export const AdminDepositView: React.FC<Props> = ({
     setIsSubmitting(true);
     const receiptSerial = `NXR-DIR-${year}-${Date.now().toString().slice(-4)}`;
     const finalTrx = trxId.trim() || `DIR-${Date.now().toString().slice(-6)}`;
-    const timestampNow = new Date().toISOString();
 
     const newEntry: Partial<Installment> = {
-      receiptNo: receiptSerial,
       memberId: currentSelectedMember.id,
       memberName: currentSelectedMember.name,
       memberNameBn: currentSelectedMember.nameBn,
       month,
       year,
       amount: totalLockedAmount,
-      lateFee: calculatedLateFee,
+      lateFee: Number(lateFee) || 0,
       method,
       trxId: finalTrx,
-      date: paymentDate || todayStr,
+      date: new Date().toISOString().split('T')[0],
       status: 'approved',
       approvedBy: 'Super Admin',
-      approvedAt: timestampNow,
+      approvedAt: new Date().toISOString(),
       notes: notes.trim(),
       isDeleted: false
     };
@@ -155,6 +137,7 @@ export const AdminDepositView: React.FC<Props> = ({
       onAddDirectInstallment(newEntry);
       setIsSubmitting(false);
       setTrxId('');
+      setLateFee(0);
       setNotes('');
       
       const createdObj: Installment = {
@@ -166,13 +149,13 @@ export const AdminDepositView: React.FC<Props> = ({
         month,
         year,
         amount: totalLockedAmount,
-        lateFee: calculatedLateFee,
+        lateFee: Number(lateFee) || 0,
         method,
         trxId: finalTrx,
-        date: paymentDate || todayStr,
+        date: new Date().toISOString().split('T')[0],
         status: 'approved',
         approvedBy: 'Super Admin',
-        approvedAt: timestampNow,
+        approvedAt: new Date().toISOString(),
         notes: notes.trim(),
         isDeleted: false
       };
@@ -181,6 +164,7 @@ export const AdminDepositView: React.FC<Props> = ({
   };
 
   const activeInstallments = installments.filter(i => !i.isDeleted && (i.approvedBy === 'Super Admin' || i.status === 'approved'));
+  const trashedInstallments = installments.filter(i => i.isDeleted);
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-300">
@@ -197,23 +181,35 @@ export const AdminDepositView: React.FC<Props> = ({
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
             {lang === 'bn' 
-              ? 'গঠনতন্ত্রের ধারা ৩ ও ধারা ৪ অনুযায়ী স্বয়ংক্রিয় বিলম্ব ফিসহ কিস্তির পরিমাণ সরাসরি ক্যাপিটাল লেজারে এন্ট্রি করুন।' 
-              : 'Securely record auto-calculated installment amounts with Clause 4 late fines directly into the central capital ledger.'}
+              ? 'ইকুইটি ফর্মুলা অনুযায়ী সুরক্ষিত ও লক করা কিস্তির পরিমাণ সরাসরি ক্যাপিটাল লেজারে এন্ট্রি করুন।' 
+              : 'Securely record auto-calculated installment amounts directly into the central capital ledger.'}
           </p>
         </div>
 
-        {/* REAL-TIME TIMESTAMP BADGE (DUPLICATE TRASH BUTTON REMOVED) */}
-        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-right shrink-0">
-          <div className="flex items-center justify-end gap-1.5 text-[10px] text-emerald-400 uppercase font-bold mb-1">
-            <Timer className="w-3.5 h-3.5 animate-pulse" />
-            <span>{lang === 'bn' ? 'সিস্টেম রিয়েল-টাইম' : 'System Real-Time'}</span>
+        {/* REAL-TIME TIMESTAMP BADGE & TRASH BUTTON */}
+        <div className="flex items-center gap-4">
+          {trashedInstallments.length > 0 && (
+            <button
+              onClick={() => setShowTrashModal(true)}
+              className="flex items-center gap-1.5 px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-2xl text-xs font-semibold transition"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>{lang === 'bn' ? `ট্র্যাশ / অডিট (${trashedInstallments.length})` : `Trash (${trashedInstallments.length})`}</span>
+            </button>
+          )}
+
+          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-right shrink-0">
+            <div className="flex items-center justify-end gap-1.5 text-[10px] text-emerald-400 uppercase font-bold mb-1">
+              <Timer className="w-3.5 h-3.5 animate-pulse" />
+              <span>{lang === 'bn' ? 'সিস্টেম রিয়েল-টাইম' : 'System Real-Time'}</span>
+            </div>
+            <p className="text-2xl font-black text-white font-mono tracking-tight">
+              {currentTime}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {currentDateString}
+            </p>
           </div>
-          <p className="text-2xl font-black text-white font-mono tracking-tight">
-            {currentTime}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {currentDateString}
-          </p>
         </div>
       </div>
 
@@ -227,8 +223,7 @@ export const AdminDepositView: React.FC<Props> = ({
                 {lang === 'bn' ? 'কিস্তি সফলভাবে মূলধনে যুক্ত ও অনুমোদিত হয়েছে!' : 'Installment Successfully Logged & Approved!'}
               </h4>
               <p className="text-xs text-slate-300">
-                {successReceipt.memberName} ({successReceipt.memberId}) • {successReceipt.month} {successReceipt.year} • ৳{successReceipt.amount.toLocaleString()} ({successReceipt.method})
-                {successReceipt.lateFee > 0 && ` [বিলম্ব ফি: ৳${successReceipt.lateFee.toLocaleString()}]`}
+                {successReceipt.memberName} • {successReceipt.month} {successReceipt.year} • ৳{successReceipt.amount.toLocaleString()} ({successReceipt.method})
               </p>
             </div>
           </div>
@@ -251,80 +246,29 @@ export const AdminDepositView: React.FC<Props> = ({
       )}
 
       {/* DIRECT DEPOSIT ENTRY FORM CARD */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-5">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-5 mb-6">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
               <PlusCircle className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">
-                {lang === 'bn' ? 'সরাসরি কিস্তি তথ্য এন্ট্রি ফরম' : 'Protected Direct Deposit Form'}
+                {lang === 'bn' ? 'সরাসরি কিস্তি তথ্য এন্ট্রি ফর্ম' : 'Protected Direct Deposit Form'}
               </h3>
               <p className="text-xs text-slate-400">
-                {lang === 'bn' 
-                  ? 'শেয়ারহোল্ডার ও জমার তারিখ নির্বাচন করলে ধারা ৪ অনুযায়ী বিলম্ব ফি স্বয়ংক্রিয়ভাবে হিসাব ও লক হবে' 
-                  : 'Selecting a shareholder and payment date auto-calculates Clause 4 late fines and strictly locks amounts'}
+                {lang === 'bn' ? 'শেয়ারহোল্ডার নির্বাচন করলে কিস্তির পরিমাণ স্বয়ংক্রিয়ভাবে গণনা ও লক হবে' : 'Selecting a shareholder auto-calculates and strictly locks the installment amount'}
               </p>
             </div>
           </div>
 
           <div className="text-right hidden sm:block">
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">
-              {lang === 'bn' ? 'স্বয়ংক্রিয়ভাবে মোট লক করা পরিমাণ' : 'Locked Total Amount'}
+              {lang === 'bn' ? 'স্বয়ংক্রিয়ভাবে লক করা পরিমাণ' : 'Locked Monthly Amount'}
             </span>
             <span className="text-xl font-black text-emerald-400 font-mono flex items-center gap-1.5 justify-end">
               <Lock className="w-4 h-4 text-emerald-400" />
               ৳ {totalLockedAmount.toLocaleString()}
-            </span>
-          </div>
-        </div>
-
-        {/* CLAUSE 4 FINE STATUS & BANNER */}
-        <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-          isFuture
-            ? 'bg-sky-500/10 border-sky-500/30 text-sky-300'
-            : !isLate 
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
-            : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-        }`}>
-          <div className="flex items-center gap-3 text-xs sm:text-sm">
-            <div className={`p-2 rounded-xl shrink-0 ${
-              isFuture ? 'bg-sky-500/20 text-sky-400' : !isLate ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-            }`}>
-              {isFuture ? <Sparkles className="w-5 h-5" /> : isLate ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold">
-                  {isFuture
-                    ? (lang === 'bn' ? 'ভবিষ্যতের কিস্তি (অগ্রিম জমাকৃত)' : 'Upcoming / Advance Installment')
-                    : !isLate 
-                    ? (lang === 'bn' ? 'সময়মতো পরিশোধ (১ম থেকে ১০ই তারিখ)' : 'On-Time Submission (1st - 10th)')
-                    : (lang === 'bn' ? 'বিলম্বিত পরিশোধ (১০ তারিখের পর)' : 'Late Submission (After 10th)')}
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-950 font-mono border border-slate-700 font-bold">
-                  {lang === 'bn' ? 'গঠনতন্ত্র ধারা ৪.৩' : 'Clause 4.3 Rule'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
-                {isFuture
-                  ? (lang === 'bn' ? 'ভবিষ্যত মাসের কিস্তির ক্ষেত্রে কোনো বিলম্ব জরিমানা প্রযোজ্য নয় (বিলম্ব ফি: ৳০)।' : 'No late fee applies to advance / future installments (Late Fee: ৳0).')
-                  : !isLate 
-                  ? (lang === 'bn' ? '১ থেকে ১০ তারিখের মধ্যে জমা হওয়ায় কোনো বিলম্ব ফি প্রযোজ্য নয় (বিলম্ব ফি: ৳০)।' : 'Installment deposited within 1st-10th has strictly 0 BDT late fee.')
-                  : (lang === 'bn' 
-                      ? `১০ তারিখ অতিক্রম করায় ${currentSelectedMember.share}% শেয়ারের জন্য শেয়ার প্রতি ৳১০০ হারে মোট ৳${calculatedLateFee.toLocaleString()} বিলম্ব ফি যুক্ত হয়েছে (ধারা ৪.৪ অনুযায়ী মওকুফ নিষিদ্ধ)।` 
-                      : `Deposited after 10th: 100 BDT per 1% share penalty applied = ৳${calculatedLateFee.toLocaleString()} (Waivers strictly prohibited under Clause 4.4).`)}
-              </p>
-            </div>
-          </div>
-
-          <div className="text-right shrink-0">
-            <span className="text-[10px] text-slate-400 block uppercase font-semibold">
-              {lang === 'bn' ? 'বিলম্ব ফি (ধারা ৪)' : 'Clause 4 Fine'}
-            </span>
-            <span className={`text-lg font-black font-mono ${isFuture ? 'text-sky-400' : !isLate ? 'text-emerald-400' : 'text-amber-400'}`}>
-              ৳ {calculatedLateFee.toLocaleString()}
             </span>
           </div>
         </div>
@@ -335,7 +279,7 @@ export const AdminDepositView: React.FC<Props> = ({
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-2 flex items-center justify-between">
               <span>{lang === 'bn' ? 'সদস্য নির্বাচন করুন (Select Shareholder) *' : 'Select Shareholder *'}</span>
-              <span className="text-[10px] text-emerald-400 font-mono">১৩ জন প্রতিষ্ঠাতা অংশীদার (NXR-001 to NXR-013)</span>
+              <span className="text-[10px] text-emerald-400 font-mono">১৩ জন সদস্য (NXR-001 to NXR-013)</span>
             </label>
             <select
               value={selectedMemberId}
@@ -350,12 +294,12 @@ export const AdminDepositView: React.FC<Props> = ({
             </select>
           </div>
 
-          {/* Month, Year, Payment Date, and Base Amount Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Month, Year, and LOCKED Amount Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             
             {/* Month */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-2">{t.selectMonth} *</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-2">{t.selectMonth}</label>
               <select
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
@@ -369,7 +313,7 @@ export const AdminDepositView: React.FC<Props> = ({
 
             {/* Year */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-2">{t.selectYear} *</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-2">{t.selectYear}</label>
               <select
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
@@ -381,29 +325,13 @@ export const AdminDepositView: React.FC<Props> = ({
               </select>
             </div>
 
-            {/* Payment Date */}
+            {/* LOCKED Amount (Read-Only) */}
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-2 flex items-center justify-between">
-                <span>{lang === 'bn' ? 'পরিশোধের তারিখ *' : 'Payment Date *'}</span>
-                <span className="text-[10px] text-emerald-400 font-mono">
-                  {lang === 'bn' ? '১০ তারিখ নীতি' : '10th Day Rule'}
-                </span>
-              </label>
-              <input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono"
-              />
-            </div>
-
-            {/* Base Monthly Installment (Locked) */}
-            <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-2 flex items-center justify-between">
-                <span>{lang === 'bn' ? 'মূল কিস্তি (ধারা ৩.৪)' : 'Base Installment (3.4)'}</span>
+                <span>{t.amount} (BDT)</span>
                 <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold">
                   <Lock className="w-3 h-3" />
-                  {lang === 'bn' ? 'লকড' : 'Locked'}
+                  {lang === 'bn' ? 'সুরক্ষিত ও লক' : 'Locked'}
                 </span>
               </label>
               <div className="relative">
@@ -416,61 +344,29 @@ export const AdminDepositView: React.FC<Props> = ({
                 />
                 <Lock className="w-4 h-4 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {lang === 'bn' ? '১% শেয়ার = ৳১,০০০ হারে স্বয়ংক্রিয় নির্ধারিত' : 'Auto-calculated based on 1% share = ৳1,000'}
+              </p>
             </div>
 
-          </div>
-
-          {/* SUBMISSION SUMMARY INTERFACE (LOCKED BREAKDOWN) */}
-          <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-4">
+            {/* Optional Late Fee */}
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 block uppercase">
-                {lang === 'bn' ? 'শেয়ার ও সদস্য' : 'Shareholder & Equity'}
-              </span>
-              <p className="text-sm font-bold text-white mt-1">
-                {lang === 'bn' ? currentSelectedMember.nameBn : currentSelectedMember.name}
-              </p>
-              <p className="text-[11px] text-emerald-400 font-mono">
-                {currentSelectedMember.id} • {currentSelectedMember.share}% Share
-              </p>
-            </div>
-
-            <div>
-              <span className="text-[11px] font-semibold text-slate-400 block uppercase">
-                {lang === 'bn' ? 'মৌলিক কিস্তির পরিমাণ' : 'Base Installment Amount'}
-              </span>
-              <p className="text-lg font-bold text-white font-mono mt-1">
-                ৳ {lockedBaseAmount.toLocaleString()}
-              </p>
-              <p className="text-[10px] text-slate-400">
-                {lang === 'bn' ? '১% = ৳১,০০০ (ধারা ৩.৪)' : '1% Share = ৳1,000 (Clause 3.4)'}
+              <label className="text-xs font-semibold text-slate-300 block mb-2">
+                {lang === 'bn' ? 'বিলম্ব ফি (যদি থাকে)' : 'Late Fee (Optional)'}
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={lateFee || ''}
+                onChange={(e) => setLateFee(Number(e.target.value) || 0)}
+                placeholder="0"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono"
+              />
+              <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                {lang === 'bn' ? `মোট জমা হবে: ৳ ${totalLockedAmount.toLocaleString()}` : `Total to log: ৳ ${totalLockedAmount.toLocaleString()}`}
               </p>
             </div>
 
-            <div>
-              <span className="text-[11px] font-semibold text-slate-400 block uppercase">
-                {lang === 'bn' ? 'বিলম্ব ফি (ধারা ৪.৩)' : 'Clause 4 Late Fine'}
-              </span>
-              <p className={`text-lg font-bold font-mono mt-1 ${calculatedLateFee > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-                ৳ {calculatedLateFee.toLocaleString()}
-              </p>
-              <p className="text-[10px] text-slate-400">
-                {calculatedLateFee > 0 
-                  ? (lang === 'bn' ? `${currentSelectedMember.share} শেয়ার × ৳১০০` : `${currentSelectedMember.share} shares × ৳100`) 
-                  : (lang === 'bn' ? 'কোনো জরিমানা নেই' : 'No fine applied')}
-              </p>
-            </div>
-
-            <div className="bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-xl">
-              <span className="text-[11px] font-bold text-emerald-400 block uppercase">
-                {lang === 'bn' ? 'সর্বমোট জমার পরিমাণ' : 'Total Payable Amount'}
-              </span>
-              <p className="text-xl font-black text-emerald-400 font-mono mt-0.5">
-                ৳ {totalLockedAmount.toLocaleString()}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                {paymentDate} • {currentTime}
-              </p>
-            </div>
           </div>
 
           {/* Payment Method and TrxID Grid */}
@@ -478,7 +374,7 @@ export const AdminDepositView: React.FC<Props> = ({
             
             {/* Payment Method */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-2">{t.selectMethod} *</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-2">{t.selectMethod}</label>
               <select
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
@@ -538,9 +434,7 @@ export const AdminDepositView: React.FC<Props> = ({
               <span>
                 {isSubmitting 
                   ? (lang === 'bn' ? 'প্রসেসিং হচ্ছে...' : 'Processing...') 
-                  : (lang === 'bn' 
-                      ? `সরাসরি মূলধনে ৳${totalLockedAmount.toLocaleString()} জমা ও অনুমোদন নিশ্চিত করুন (ধারা ৪ পরিপালিত)` 
-                      : `Log & Approve Direct Capital Deposit of ৳${totalLockedAmount.toLocaleString()} (Clause 4 Verified)`)}
+                  : (lang === 'bn' ? `সরাসরি মূলধনে ৳${totalLockedAmount.toLocaleString()} জমা ও অনুমোদন নিশ্চিত করুন` : `Log & Approve Direct Capital Deposit of ৳${totalLockedAmount.toLocaleString()}`)}
               </span>
             </button>
           </div>
@@ -548,7 +442,7 @@ export const AdminDepositView: React.FC<Props> = ({
         </form>
       </div>
 
-      {/* RECENT DIRECT DEPOSITS TABLE */}
+      {/* RECENT DIRECT DEPOSITS TABLE WITH DELETE / TRASH OPTION */}
       <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-xl">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -556,9 +450,19 @@ export const AdminDepositView: React.FC<Props> = ({
               {lang === 'bn' ? 'সম্প্রতি অনুমোদিত কিস্তি এন্ট্রি তালিকা' : 'Recently Logged & Verified Deposits'}
             </h3>
             <p className="text-xs text-slate-400">
-              {lang === 'bn' ? 'সর্বশেষ অনুমোদিত কিস্তিসমূহের রসিদ ও অডিট ব্যবস্থাপনা' : 'Latest verified installment receipts with audit tracking'}
+              {lang === 'bn' ? 'সর্বশেষ অনুমোদিত কিস্তিসমূহের রসিদ ও অডিট ম্যানেজমেন্ট' : 'Latest verified installment receipts with audit tracking'}
             </p>
           </div>
+
+          {trashedInstallments.length > 0 && (
+            <button
+              onClick={() => setShowTrashModal(true)}
+              className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{lang === 'bn' ? `ট্র্যাশ দেখুন (${trashedInstallments.length})` : `View Trash (${trashedInstallments.length})`}</span>
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -596,11 +500,6 @@ export const AdminDepositView: React.FC<Props> = ({
                     </td>
                     <td className="py-3 px-3 font-bold text-emerald-400 font-mono">
                       ৳ {inst.amount.toLocaleString()}
-                      {inst.lateFee && inst.lateFee > 0 ? (
-                        <span className="block text-[10px] text-amber-400 font-normal">
-                          {lang === 'bn' ? `(ফি: ৳${inst.lateFee})` : `(Fine: ৳${inst.lateFee})`}
-                        </span>
-                      ) : null}
                     </td>
                     <td className="py-3 px-3 text-slate-300">
                       <div>{inst.method}</div>
@@ -654,8 +553,8 @@ export const AdminDepositView: React.FC<Props> = ({
             </h3>
             <p className="text-xs text-slate-300 leading-relaxed">
               {lang === 'bn' 
-                ? 'আপনি কি নিশ্চিত যে এই কিস্তিটি মুছে ট্র্যাশে স্থানান্তর করতে চান? অডিট রেকর্ডের জন্য এটি সেন্ট্রাল ট্র্যাশে সংরক্ষিত থাকবে এবং যেকোনো সময় পুনরুদ্ধার করা যাবে।' 
-                : 'Are you sure you want to move this installment to Trash? It will be archived in the central trash for audit compliance.'}
+                ? 'আপনি কি নিশ্চিত যে এই কিস্তিটি মুছে ট্র্যাশে স্থানান্তর করতে চান? অডিট রেকর্ডের জন্য এটি ট্র্যাশে সংরক্ষিত থাকবে এবং যেকোনো সময় পুনরুদ্ধার করা যাবে।' 
+                : 'Are you sure you want to move this installment to Trash? It will be archived for audit compliance and can be restored anytime.'}
             </p>
             <div className="flex justify-end space-x-3 pt-2">
               <button
@@ -681,7 +580,110 @@ export const AdminDepositView: React.FC<Props> = ({
         </div>
       )}
 
+      {/* TRASH & AUDIT TRAIL MODAL */}
+      {showTrashModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {lang === 'bn' ? 'ট্র্যাশ ও অডিট ট্রেইল' : 'Installment Audit & Trash System'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'bn' ? 'মুছে ফেলা কিস্তির তালিকা ও পুনরুদ্ধার ব্যবস্থা' : 'Archived deleted installments with restore and purge options'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTrashModal(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700"
+                title="Close"
+                aria-label="Close Trash modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 pr-1">
+              {trashedInstallments.length === 0 ? (
+                <div className="text-center py-12 text-slate-500 text-xs">
+                  {lang === 'bn' ? 'ট্র্যাশে কোনো কিস্তি নেই।' : 'Trash is empty.'}
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 uppercase font-semibold">
+                      <th className="py-2.5 px-3">Receipt / Member</th>
+                      <th className="py-2.5 px-3">Period</th>
+                      <th className="py-2.5 px-3">Amount</th>
+                      <th className="py-2.5 px-3">Deleted Date</th>
+                      <th className="py-2.5 px-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {trashedInstallments.map((inst) => (
+                      <tr key={inst.id} className="hover:bg-slate-800/30">
+                        <td className="py-3 px-3">
+                          <div className="font-bold text-white">{inst.memberName}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">{inst.receiptNo || inst.id} ({inst.memberId})</div>
+                        </td>
+                        <td className="py-3 px-3 text-slate-300">
+                          {inst.month} {inst.year}
+                        </td>
+                        <td className="py-3 px-3 font-bold text-emerald-400 font-mono">
+                          ৳ {inst.amount.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">
+                          {inst.deletedAt ? new Date(inst.deletedAt).toLocaleDateString() : inst.date}
+                        </td>
+                        <td className="py-3 px-3 text-right space-x-2">
+                          {onRestoreInstallment && (
+                            <button
+                              onClick={() => onRestoreInstallment(inst.id)}
+                              className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-semibold transition inline-flex items-center gap-1"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>{lang === 'bn' ? 'পুনরুদ্ধার' : 'Restore'}</span>
+                            </button>
+                          )}
+                          {onPermanentDeleteInstallment && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(lang === 'bn' ? 'আপনি কি নিশ্চিত যে এটি স্থায়ীভাবে মুছে ফেলতে চান?' : 'Permanently purge this record?')) {
+                                  onPermanentDeleteInstallment(inst.id);
+                                }
+                              }}
+                              className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs transition"
+                              title="Purge Permanently"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+              <span>Total in Trash: {trashedInstallments.length}</span>
+              <button
+                onClick={() => setShowTrashModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
-

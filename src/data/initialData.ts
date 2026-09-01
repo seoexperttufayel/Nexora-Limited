@@ -1,20 +1,4 @@
-import { Member, Installment, Project, Notice, AdminProfile } from '../types';
-
-export const DEFAULT_ADMIN_PROFILE: AdminProfile = {
-  id: 'admin',
-  name: 'Super Administrator',
-  nameBn: 'সুপার অ্যাডমিনিস্ট্রেটর',
-  email: 'admin@nexoraltd.com',
-  phone: '+880 1711-000000',
-  nid: '1985269258000099',
-  designationEn: 'Chief Executive Administrator',
-  designationBn: 'প্রধান নির্বাহী প্রশাসক',
-  role: 'admin',
-  avatarUrl: '',
-  bioEn: 'Central administrative and financial authority for Nexora Limited governance.',
-  bioBn: 'নেক্সোরা লিমিটেড এর কেন্দ্রীয় প্রশাসনিক ও আর্থিক পরিচালনা কর্তৃপক্ষ।',
-  updatedAt: '2026-01-01'
-};
+import { Member, Installment, Project, Notice } from '../types';
 
 export const FOUNDER_MEMBERS: Member[] = [
   {
