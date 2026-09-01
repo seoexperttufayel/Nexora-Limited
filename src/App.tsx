@@ -15,6 +15,10 @@ import {
   rejectInstallmentInCloud,
   updateInstallmentDeletionInCloud,
   deleteInstallmentInCloud,
+  subscribeToLedgerTransactions,
+  seedInitialLedgerIfEmpty,
+  saveLedgerTransactionToCloud,
+  deleteLedgerTransactionInCloud,
   subscribeToPaymentAccounts,
   seedInitialPaymentAccountsIfEmpty,
   savePaymentAccountToCloud,
@@ -23,7 +27,10 @@ import {
   saveProjectToCloud,
   deleteProjectInCloud,
   subscribeToAdminProfile,
-  saveAdminProfileInCloud
+  saveAdminProfileInCloud,
+  subscribeToNotices,
+  saveNoticeToCloud,
+  deleteNoticeInCloud
 } from './services/firebase';
 
 // Components
@@ -44,6 +51,8 @@ import { NoticeBoardModal } from './components/NoticeBoardModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { UniversalTrashModal } from './components/UniversalTrashModal';
 import { AdminProfileModal } from './components/AdminProfileModal';
+import { ConstitutionView } from './components/ConstitutionView';
+import { NexoraLogo } from './components/NexoraLogo';
 
 // Icons
 import { 
@@ -196,18 +205,19 @@ export default function App() {
     return PROJECTS;
   });
 
-  // Notices State
+  // Notices State (Real-time Firestore Database-driven, no dummy notices)
   const [notices, setNotices] = useState<Notice[]>(() => {
-    const saved = localStorage.getItem('nxr_notices_v1');
-    if (saved) {
-      try {
+    try {
+      localStorage.removeItem('nxr_notices_v1'); // Purge legacy dummy storage key
+      const saved = localStorage.getItem('nxr_notices_v2');
+      if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch {
-        // fallback
+        if (Array.isArray(parsed)) return parsed;
       }
+    } catch {
+      // fallback
     }
-    return NOTICES;
+    return [];
   });
 
   // Read and dismissed notices persistence
@@ -235,7 +245,7 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {
         // fallback
       }
@@ -249,7 +259,7 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {
         // fallback
       }
@@ -263,10 +273,11 @@ export default function App() {
   useEffect(() => {
     seedInitialInstallmentsIfEmpty(INITIAL_INSTALLMENTS);
     seedInitialPaymentAccountsIfEmpty(INITIAL_PAYMENT_ACCOUNTS);
+    seedInitialLedgerIfEmpty(INITIAL_LEDGER_TRANSACTIONS);
 
     const unsubscribeInstallments = subscribeToInstallments(
       (cloudInstallments) => {
-        if (cloudInstallments && cloudInstallments.length > 0) {
+        if (cloudInstallments) {
           setInstallments(cloudInstallments);
           setIsCloudSynced(true);
         }
@@ -277,9 +288,20 @@ export default function App() {
       }
     );
 
+    const unsubscribeLedger = subscribeToLedgerTransactions(
+      (cloudTxns) => {
+        if (cloudTxns) {
+          setLedgerTransactions(cloudTxns);
+        }
+      },
+      (error) => {
+        console.warn('Firestore ledger subscription status:', error);
+      }
+    );
+
     const unsubscribePayments = subscribeToPaymentAccounts(
       (cloudAccounts) => {
-        if (cloudAccounts && cloudAccounts.length > 0) {
+        if (cloudAccounts) {
           setPaymentAccounts(cloudAccounts);
         }
       },
@@ -312,11 +334,24 @@ export default function App() {
       }
     );
 
+    const unsubscribeNotices = subscribeToNotices(
+      (cloudNotices) => {
+        if (cloudNotices) {
+          setNotices(cloudNotices);
+        }
+      },
+      (error) => {
+        console.warn('Firestore notices subscription status:', error);
+      }
+    );
+
     return () => {
       unsubscribeInstallments();
+      unsubscribeLedger();
       unsubscribePayments();
       unsubscribeProjects();
       unsubscribeAdmin();
+      unsubscribeNotices();
     };
   }, []);
 
@@ -371,7 +406,7 @@ export default function App() {
   }, [projects]);
 
   useEffect(() => {
-    safeSetLocalStorage('nxr_notices_v1', JSON.stringify(notices));
+    safeSetLocalStorage('nxr_notices_v2', JSON.stringify(notices));
   }, [notices]);
 
   useEffect(() => {
@@ -393,6 +428,14 @@ export default function App() {
   useEffect(() => {
     safeSetLocalStorage('nxr_admin_profile_v1', JSON.stringify(adminProfile));
   }, [adminProfile]);
+
+  // Strict Access Control: Redirect unauthorized public visitors away from internal/protected tabs
+  useEffect(() => {
+    if (role === 'public' && (activeTab === 'constitution' || activeTab === 'financial-ledger' || activeTab === 'installments' || activeTab === 'member-dashboard' || activeTab === 'admin-dashboard' || activeTab === 'member-deposit' || activeTab === 'admin-deposit')) {
+      setActiveTab('home');
+      setShowLoginModal(true);
+    }
+  }, [role, activeTab]);
 
   // Admin Profile Handlers
   const handleUpdateAdminProfile = async (updated: AdminProfile) => {
@@ -416,29 +459,55 @@ export default function App() {
     });
   };
 
-  // Ledger Handlers
-  const handleAddLedgerTransaction = (newTxn: LedgerTransaction) => {
+  // Ledger Handlers (Local & Firestore Cloud Synced)
+  const handleAddLedgerTransaction = async (newTxn: LedgerTransaction) => {
     setLedgerTransactions(prev => [newTxn, ...prev]);
+    try {
+      await saveLedgerTransactionToCloud(newTxn);
+    } catch (err) {
+      console.error('Cloud save ledger transaction error:', err);
+    }
   };
 
-  const handleDeleteLedgerTransaction = (id: string) => {
-    setLedgerTransactions(prev =>
-      prev.map(t => (t.id === id ? { ...t, isDeleted: true } : t))
-    );
+  const handleDeleteLedgerTransaction = async (id: string) => {
+    setLedgerTransactions(prev => prev.filter(t => t.id !== id));
+    try {
+      await deleteLedgerTransactionInCloud(id);
+    } catch (err) {
+      console.error('Cloud delete ledger transaction error:', err);
+    }
   };
 
-  const handleRestoreLedgerTransaction = (id: string) => {
+  const handleRestoreLedgerTransaction = async (id: string) => {
     setLedgerTransactions(prev =>
       prev.map(t => (t.id === id ? { ...t, isDeleted: false } : t))
     );
+    const target = ledgerTransactions.find(t => t.id === id);
+    if (target) {
+      try {
+        await saveLedgerTransactionToCloud({ ...target, isDeleted: false });
+      } catch (err) {
+        console.error('Cloud restore ledger transaction error:', err);
+      }
+    }
   };
 
-  const handlePermanentDeleteLedgerTransaction = (id: string) => {
+  const handlePermanentDeleteLedgerTransaction = async (id: string) => {
     setLedgerTransactions(prev => prev.filter(t => t.id !== id));
+    try {
+      await deleteLedgerTransactionInCloud(id);
+    } catch (err) {
+      console.error('Cloud permanent delete ledger transaction error:', err);
+    }
   };
 
   const handlePurgeAllTrash = async () => {
     const trashedInstIds = installments.filter(i => i.isDeleted).map(i => i.id);
+    const trashedLedgerIds = ledgerTransactions.filter(t => t.isDeleted).map(t => t.id);
+    const trashedAccountIds = paymentAccounts.filter(a => a.isDeleted).map(a => a.id);
+    const trashedProjectIds = projects.filter(p => p.isDeleted).map(p => p.id);
+    const trashedNoticeIds = notices.filter(n => n.isDeleted).map(n => n.id);
+
     setInstallments(prev => prev.filter(i => !i.isDeleted));
     setMembers(prev => prev.filter(m => !m.isDeleted).sort(sortMembersById));
     setLedgerTransactions(prev => prev.filter(t => !t.isDeleted));
@@ -449,8 +518,37 @@ export default function App() {
     for (const instId of trashedInstIds) {
       try {
         await deleteInstallmentInCloud(instId);
+        await deleteLedgerTransactionInCloud(`LED-${instId}`);
       } catch (err) {
-        console.error('Cloud purge error:', err);
+        console.error('Cloud purge installment error:', err);
+      }
+    }
+    for (const ledgerId of trashedLedgerIds) {
+      try {
+        await deleteLedgerTransactionInCloud(ledgerId);
+      } catch (err) {
+        console.error('Cloud purge ledger error:', err);
+      }
+    }
+    for (const accId of trashedAccountIds) {
+      try {
+        await deletePaymentAccountInCloud(accId);
+      } catch (err) {
+        console.error('Cloud purge account error:', err);
+      }
+    }
+    for (const projId of trashedProjectIds) {
+      try {
+        await deleteProjectInCloud(projId);
+      } catch (err) {
+        console.error('Cloud purge project error:', err);
+      }
+    }
+    for (const noticeId of trashedNoticeIds) {
+      try {
+        await deleteNoticeInCloud(noticeId);
+      } catch (err) {
+        console.error('Cloud purge notice error:', err);
       }
     }
   };
@@ -549,25 +647,50 @@ export default function App() {
     }
   };
 
-  // Notice Handlers (Soft Delete to Central Trash Bin)
-  const handleAddNotice = (newNotice: Notice) => {
-    setNotices(prev => [newNotice, ...prev]);
+  // Notice Handlers (Firestore Cloud Synced with Permanent Deletion)
+  const handleAddNotice = async (newNotice: Notice) => {
+    setNotices(prev => [newNotice, ...prev.filter(n => n.id !== newNotice.id)]);
+    try {
+      await saveNoticeToCloud(newNotice);
+    } catch (err) {
+      console.error('Cloud notice add error:', err);
+    }
   };
 
-  const handleDeleteNotice = (id: string) => {
-    setNotices(prev =>
-      prev.map(n => (n.id === id ? { ...n, isDeleted: true, deletedAt: new Date().toISOString(), deletedBy: currentUser?.name || 'Admin' } : n))
-    );
+  const handleDeleteNotice = async (id: string) => {
+    setNotices(prev => prev.filter(n => n.id !== id));
+    setReadNoticeIds(prev => prev.filter(x => x !== id));
+    setDismissedNoticeIds(prev => prev.filter(x => x !== id));
+    try {
+      await deleteNoticeInCloud(id);
+    } catch (err) {
+      console.error('Cloud notice delete error:', err);
+    }
   };
 
-  const handleRestoreNotice = (id: string) => {
+  const handleRestoreNotice = async (id: string) => {
     setNotices(prev =>
       prev.map(n => (n.id === id ? { ...n, isDeleted: false, deletedAt: undefined, deletedBy: undefined } : n))
     );
+    const target = notices.find(n => n.id === id);
+    if (target) {
+      try {
+        await saveNoticeToCloud({ ...target, isDeleted: false, deletedAt: undefined, deletedBy: undefined });
+      } catch (err) {
+        console.error('Cloud notice restore error:', err);
+      }
+    }
   };
 
-  const handlePermanentDeleteNotice = (id: string) => {
+  const handlePermanentDeleteNotice = async (id: string) => {
     setNotices(prev => prev.filter(n => n.id !== id));
+    setReadNoticeIds(prev => prev.filter(x => x !== id));
+    setDismissedNoticeIds(prev => prev.filter(x => x !== id));
+    try {
+      await deleteNoticeInCloud(id);
+    } catch (err) {
+      console.error('Cloud notice permanent delete error:', err);
+    }
   };
 
   // Handle Login success
@@ -815,9 +938,15 @@ export default function App() {
     }
   };
 
-  const handlePermanentDeleteInstallment = (id: string) => {
+  const handlePermanentDeleteInstallment = async (id: string) => {
     setInstallments(prev => prev.filter(item => item.id !== id));
     setLedgerTransactions(prev => prev.filter(t => t.id !== `LED-${id}`));
+    try {
+      await deleteInstallmentInCloud(id);
+      await deleteLedgerTransactionInCloud(`LED-${id}`);
+    } catch (err) {
+      console.error('Cloud permanent delete installment error:', err);
+    }
   };
 
   // Member Management Handlers (Strictly Locked NXR-001 to NXR-013 Sequential Sorting)
@@ -1061,6 +1190,17 @@ export default function App() {
             />
           )}
 
+          {/* Constitution View (Strictly for Logged-In Members & Admins) */}
+          {activeTab === 'constitution' && role !== 'public' && (
+            <ConstitutionView
+              lang={lang}
+              role={role}
+              members={members}
+              currentUser={currentUser}
+              onNavigate={(tab) => setActiveTab(tab)}
+            />
+          )}
+
         </main>
       </div>
 
@@ -1069,14 +1209,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           
           <div className="space-y-4 md:col-span-2">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-950 text-xl shadow-lg shadow-emerald-500/20">
-                N
-              </div>
-              <span className="text-xl font-bold text-white tracking-tight">
-                {translations[lang].appName}
-              </span>
-            </div>
+            <NexoraLogo size="lg" variant="full" showTagline />
 
             <p className="text-xs text-slate-400 max-w-md leading-relaxed">
               {translations[lang].subTagline}. {lang === 'bn' 

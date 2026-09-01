@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Language, Role, Member } from '../types';
 import { FOUNDER_MEMBERS } from '../data/initialData';
+import { NexoraLogo } from './NexoraLogo';
 import { X, Lock, User, KeyRound, Mail, ShieldCheck, ArrowLeft, CheckCircle2, AlertTriangle, Send } from 'lucide-react';
 
 interface Props {
@@ -174,8 +175,8 @@ export const LoginModal: React.FC<Props> = ({ isOpen, lang, members, onClose, on
           <>
             {/* Modal Header */}
             <div className="text-center mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500 mx-auto flex items-center justify-center text-slate-950 font-black text-2xl shadow-lg shadow-emerald-500/20 mb-3">
-                <Lock className="w-6 h-6" />
+              <div className="flex justify-center mb-3">
+                <NexoraLogo size="lg" variant="badge" />
               </div>
               <h2 className="text-2xl font-bold text-white tracking-tight">
                 {lang === 'bn' ? 'নেক্সোরা পোর্টাল লগইন' : 'Nexora Portal Login'}

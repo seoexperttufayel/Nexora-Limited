@@ -6,7 +6,7 @@ import {
   ShieldCheck, Globe, Lock, LogOut, UserCheck, 
   Menu, X, Sparkles, Building2, Bell, FileText, CheckCircle2,
   KeyRound, ChevronRight, User, Landmark, Trash2,
-  Sun, Moon, Palette, Shield
+  Sun, Moon, Palette, Shield, Scroll
 } from 'lucide-react';
 
 interface Props {
@@ -385,6 +385,19 @@ export const Navbar: React.FC<Props> = ({
               >
                 {t.projects}
               </button>
+
+              {/* 7. গঠনতন্ত্র (Constitution) */}
+              <button
+                onClick={() => setActiveTab('constitution')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
+                  activeTab === 'constitution'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <Scroll className="w-3.5 h-3.5 text-amber-400" />
+                <span>{t.constitution}</span>
+              </button>
             </>
           )}
 
@@ -472,6 +485,19 @@ export const Navbar: React.FC<Props> = ({
                 }`}
               >
                 {t.projects}
+              </button>
+
+              {/* 7. গঠনতন্ত্র (Constitution) */}
+              <button
+                onClick={() => setActiveTab('constitution')}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 ${
+                  activeTab === 'constitution'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <Scroll className="w-3.5 h-3.5 text-amber-400" />
+                <span>{t.constitution}</span>
               </button>
             </>
           )}
@@ -575,8 +601,12 @@ export const Navbar: React.FC<Props> = ({
                   <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
-                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5 col-span-2 sm:col-span-1">
-                    <KeyRound className="w-3.5 h-3.5" />
+                  <button onClick={() => handleNavClick('constitution')} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5 border border-amber-500/20">
+                    <Scroll className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{t.constitution}</span>
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 text-slate-200 rounded-xl font-medium flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                     <span>{t.changePassword}</span>
                   </button>
                 </>
@@ -588,6 +618,10 @@ export const Navbar: React.FC<Props> = ({
                   <button onClick={() => handleNavClick('financial-ledger')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{lang === 'bn' ? 'আর্থিক লেজার' : 'Financial Ledger'}</button>
                   <button onClick={() => handleNavClick('governance')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.governance}</button>
                   <button onClick={() => handleNavClick('projects')} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 rounded-xl text-slate-200 font-medium">{t.projects}</button>
+                  <button onClick={() => handleNavClick('constitution')} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5 border border-amber-500/20">
+                    <Scroll className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{t.constitution}</span>
+                  </button>
                   {onOpenTrash && (
                     <button onClick={() => { setMenuOpen(false); onOpenTrash(); }} className="p-3 text-left bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl font-medium flex items-center gap-1.5">
                       <Trash2 className="w-3.5 h-3.5" />
@@ -600,8 +634,8 @@ export const Navbar: React.FC<Props> = ({
                       <span>{lang === 'bn' ? 'প্রোফাইল ও থিম' : 'Profile & Theme'}</span>
                     </button>
                   )}
-                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-xl font-medium flex items-center gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5" />
+                  <button onClick={() => { setMenuOpen(false); onOpenChangePassword(); }} className="p-3 text-left bg-slate-800/80 hover:bg-slate-800 text-slate-200 rounded-xl font-medium flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                     <span>{t.changePassword}</span>
                   </button>
                 </>

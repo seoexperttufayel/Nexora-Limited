@@ -79,29 +79,6 @@ export const AdminDepositView: React.FC<Props> = ({
   const lockedBaseAmount = (currentSelectedMember.share || 1) * 1000;
   const totalLockedAmount = lockedBaseAmount + (Number(lateFee) || 0);
 
-  // Real-time ticking clock
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
-  const [currentDateString, setCurrentDateString] = useState(new Date().toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  }));
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleTimeString());
-      setCurrentDateString(now.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [lang]);
-
   const monthsList = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -169,7 +146,7 @@ export const AdminDepositView: React.FC<Props> = ({
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-300">
       
-      {/* HEADER WITH REAL-TIME CLOCK */}
+      {/* HEADER */}
       <div className="p-8 sm:p-10 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
         <div>
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold mb-3">
@@ -186,9 +163,9 @@ export const AdminDepositView: React.FC<Props> = ({
           </p>
         </div>
 
-        {/* REAL-TIME TIMESTAMP BADGE & TRASH BUTTON */}
-        <div className="flex items-center gap-4">
-          {trashedInstallments.length > 0 && (
+        {/* TRASH & AUDIT BUTTON */}
+        {trashedInstallments.length > 0 && (
+          <div className="flex items-center gap-4 shrink-0">
             <button
               onClick={() => setShowTrashModal(true)}
               className="flex items-center gap-1.5 px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-2xl text-xs font-semibold transition"
@@ -196,21 +173,8 @@ export const AdminDepositView: React.FC<Props> = ({
               <Trash2 className="w-4 h-4" />
               <span>{lang === 'bn' ? `ট্র্যাশ / অডিট (${trashedInstallments.length})` : `Trash (${trashedInstallments.length})`}</span>
             </button>
-          )}
-
-          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-right shrink-0">
-            <div className="flex items-center justify-end gap-1.5 text-[10px] text-emerald-400 uppercase font-bold mb-1">
-              <Timer className="w-3.5 h-3.5 animate-pulse" />
-              <span>{lang === 'bn' ? 'সিস্টেম রিয়েল-টাইম' : 'System Real-Time'}</span>
-            </div>
-            <p className="text-2xl font-black text-white font-mono tracking-tight">
-              {currentTime}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {currentDateString}
-            </p>
           </div>
-        </div>
+        )}
       </div>
 
       {/* SUCCESS BANNER WHEN ENTRY ADDED */}

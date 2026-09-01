@@ -44,6 +44,24 @@
         "status": { "type": "string" }
       },
       "required": ["id", "name", "share"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "Official company notice circular",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "titleBn": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string", "enum": ["general", "agm", "installment", "dividend"] },
+        "contentEn": { "type": "string" },
+        "contentBn": { "type": "string" },
+        "important": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "date", "category"]
     }
   },
   "firestore": {
@@ -54,6 +72,10 @@
     "members": {
       "schema": "Member",
       "description": "Members directory collection"
+    },
+    "notices": {
+      "schema": "Notice",
+      "description": "Company notice board collection"
     }
   }
 }

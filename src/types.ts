@@ -42,6 +42,8 @@ export interface Installment {
   approvedBy?: string;
   approvedAt?: string;
   notes?: string;
+  receiptUrl?: string; // Optional Payment Slip / Bank Voucher / bKash Screenshot
+  receiptFileName?: string;
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
@@ -166,6 +168,8 @@ export interface Notice {
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
+  createdAt?: string;
+  createdBy?: string;
 }
 
 export interface CompanyPost {

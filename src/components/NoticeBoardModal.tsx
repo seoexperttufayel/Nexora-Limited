@@ -35,10 +35,8 @@ export const NoticeBoardModal: React.FC<Props> = ({
   setDismissedNoticeIds: externalSetDismissedIds
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [titleBn, setTitleBn] = useState('');
-  const [titleEn, setTitleEn] = useState('');
-  const [contentBn, setContentBn] = useState('');
-  const [contentEn, setContentEn] = useState('');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
   const [category, setCategory] = useState<'general' | 'agm' | 'installment' | 'dividend'>('general');
   const [important, setImportant] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -98,17 +96,21 @@ export const NoticeBoardModal: React.FC<Props> = ({
 
   const handleCreateNotice = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!titleBn.trim() && !titleEn.trim()) return;
+    if (!title.trim() || !content.trim()) return;
+
+    const trimmedTitle = title.trim();
+    const trimmedContent = content.trim();
 
     const newNotice: Notice = {
       id: `NOT-${Date.now().toString().slice(-6)}`,
-      titleBn: titleBn.trim() || titleEn.trim(),
-      titleEn: titleEn.trim() || titleBn.trim(),
-      contentBn: contentBn.trim() || contentEn.trim(),
-      contentEn: contentEn.trim() || contentBn.trim(),
+      titleBn: trimmedTitle,
+      titleEn: trimmedTitle,
+      contentBn: trimmedContent,
+      contentEn: trimmedContent,
       category,
       important,
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
     };
 
     if (onAddNotice) {
@@ -116,10 +118,8 @@ export const NoticeBoardModal: React.FC<Props> = ({
     }
 
     // Reset form
-    setTitleBn('');
-    setTitleEn('');
-    setContentBn('');
-    setContentEn('');
+    setTitle('');
+    setContent('');
     setCategory('general');
     setImportant(false);
     setShowAddForm(false);
@@ -202,7 +202,7 @@ export const NoticeBoardModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* ADMIN NOTICE CREATION FORM (VISIBLE WHEN ADMIN CLICKS "+ Post Notice") */}
+        {/* ADMIN NOTICE CREATION FORM - DYNAMICALLY ADAPTS TO ACTIVE WEBSITE LANGUAGE */}
         {role === 'admin' && showAddForm && (
           <div className="p-5 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 shrink-0">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
@@ -212,57 +212,50 @@ export const NoticeBoardModal: React.FC<Props> = ({
                   {lang === 'bn' ? 'নতুন নোটিশ / বিজ্ঞপ্তি তৈরি ও প্রকাশ' : 'Create & Publish New Notice'}
                 </span>
               </div>
-              <span className="text-[10px] text-slate-500 font-mono">Super Admin Action</span>
+              <span className="text-[10px] text-slate-500 font-mono">
+                {lang === 'bn' ? 'ভাষা: বাংলা (সক্রিয়)' : 'Language: English (Active)'}
+              </span>
             </div>
 
-            <form onSubmit={handleCreateNotice} className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    {lang === 'bn' ? 'শিরোনাম (বাংলা) *' : 'Title (Bengali) *'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={titleBn}
-                    onChange={(e) => setTitleBn(e.target.value)}
-                    placeholder="যেমন: সেপ্টেম্বর মাসের কিস্তি জমাদান সংক্রান্ত..."
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    {lang === 'bn' ? 'শিরোনাম (ইংরেজি)' : 'Title (English)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={titleEn}
-                    onChange={(e) => setTitleEn(e.target.value)}
-                    placeholder="e.g. Notice regarding September Installment..."
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
+            <form onSubmit={handleCreateNotice} className="space-y-3.5">
+              {/* Dynamic Title Input */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  {lang === 'bn' ? 'বিজ্ঞপ্তির শিরোনাম *' : 'Notice Title *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={
+                    lang === 'bn' 
+                      ? 'যেমন: সেপ্টেম্বর মাসের কিস্তি জমাদান সংক্রান্ত...' 
+                      : 'e.g. Notice regarding September Installment...'
+                  }
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-600"
+                />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Category & Urgent Toggle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    {lang === 'bn' ? 'ক্যাটাগরি' : 'Category'}
+                    {lang === 'bn' ? 'ক্যাটাগরি / বিভাগ' : 'Notice Category'}
                   </label>
                   <select
                     value={category}
                     onChange={(e: any) => setCategory(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="general">General (সাধারণ)</option>
-                    <option value="installment">Installment (কিস্তি সংক্রান্ত)</option>
-                    <option value="agm">AGM / Meeting (সাধারণ সভা)</option>
-                    <option value="dividend">Dividend / Profit (মুনাফা বণ্টন)</option>
+                    <option value="general">{lang === 'bn' ? 'সাধারণ (General)' : 'General'}</option>
+                    <option value="installment">{lang === 'bn' ? 'কিস্তি সংক্রান্ত (Installment)' : 'Installment'}</option>
+                    <option value="agm">{lang === 'bn' ? 'সাধারণ সভা (AGM / Meeting)' : 'AGM / Meeting'}</option>
+                    <option value="dividend">{lang === 'bn' ? 'মুনাফা বণ্টন (Dividend / Profit)' : 'Dividend / Profit'}</option>
                   </select>
                 </div>
 
-                <div className="flex items-center gap-2 pt-6">
+                <div className="flex items-center gap-2 sm:pt-5">
                   <input
                     type="checkbox"
                     id="importantNoticeCheck"
@@ -270,42 +263,32 @@ export const NoticeBoardModal: React.FC<Props> = ({
                     onChange={(e) => setImportant(e.target.checked)}
                     className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
                   />
-                  <label htmlFor="importantNoticeCheck" className="text-xs text-slate-300 cursor-pointer font-medium">
+                  <label htmlFor="importantNoticeCheck" className="text-xs text-slate-300 cursor-pointer font-medium select-none">
                     {lang === 'bn' ? 'জরুরি বিজ্ঞপ্তি হিসেবে চিহ্নিত করুন (Important / Urgent)' : 'Mark as Urgent / Important'}
                   </label>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    {lang === 'bn' ? 'বিস্তারিত নোটিশ (বাংলা) *' : 'Notice Body (Bengali) *'}
-                  </label>
-                  <textarea
-                    rows={3}
-                    required
-                    value={contentBn}
-                    onChange={(e) => setContentBn(e.target.value)}
-                    placeholder="বিজ্ঞপ্তির বিস্তারিত বিবরণ লিখুন..."
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    {lang === 'bn' ? 'বিস্তারিত নোটিশ (ইংরেজি)' : 'Notice Body (English)'}
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={contentEn}
-                    onChange={(e) => setContentEn(e.target.value)}
-                    placeholder="Enter detailed English description..."
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
+              {/* Dynamic Description Textarea */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  {lang === 'bn' ? 'বিজ্ঞপ্তির বিস্তারিত বিবরণ *' : 'Detailed Notice Body / Description *'}
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={
+                    lang === 'bn'
+                      ? 'বিজ্ঞপ্তির পূর্ণাঙ্গ বিবরণ ও নির্দেশাবলী এখানে লিখুন...'
+                      : 'Enter detailed announcement description and instructions here...'
+                  }
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-600 leading-relaxed"
+                />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
@@ -315,7 +298,7 @@ export const NoticeBoardModal: React.FC<Props> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{lang === 'bn' ? 'নোটিশ প্রকাশ করুন' : 'Publish Notice'}</span>
@@ -401,7 +384,7 @@ export const NoticeBoardModal: React.FC<Props> = ({
                 title="Restore cleared notices"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>{lang === 'bn' ? `মুছে ফেলা ফিরিয়ে আনুন (${dismissedNoticeIds.length})` : `Restore (${dismissedNoticeIds.length})`}</span>
+                <span>{lang === 'bn' ? `লুকানো নোটিশ (${dismissedNoticeIds.length})` : `Hidden (${dismissedNoticeIds.length})`}</span>
               </button>
             )}
           </div>
@@ -416,6 +399,9 @@ export const NoticeBoardModal: React.FC<Props> = ({
           ) : (
             filteredNotices.map((notice) => {
               const isRead = readNoticeIds.includes(notice.id);
+              const displayTitle = lang === 'bn' ? (notice.titleBn || notice.titleEn) : (notice.titleEn || notice.titleBn);
+              const displayContent = lang === 'bn' ? (notice.contentBn || notice.contentEn) : (notice.contentEn || notice.contentBn);
+
               return (
                 <div
                   key={notice.id}
@@ -481,15 +467,15 @@ export const NoticeBoardModal: React.FC<Props> = ({
                       </button>
 
                       {/* Notice Action Buttons */}
-                      {onDeleteNotice && (
+                      {role === 'admin' && onDeleteNotice && (
                         <button
                           onClick={() => {
                             onDeleteNotice(notice.id);
-                            // Also ensure it's recorded as read so unread counter never lags
-                            setReadNoticeIds(prev => Array.from(new Set([...prev, notice.id])));
+                            setReadNoticeIds(prev => prev.filter(x => x !== notice.id));
+                            setDismissedNoticeIds(prev => prev.filter(x => x !== notice.id));
                           }}
                           className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[11px] font-semibold transition flex items-center gap-1 active:scale-95"
-                          title={lang === 'bn' ? 'ট্র্যাশ বিনে পাঠান' : 'Move to Trash Bin'}
+                          title={lang === 'bn' ? 'স্থায়ীভাবে মুছে ফেলুন' : 'Permanently Delete'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>{lang === 'bn' ? 'মুছে ফেলুন' : 'Delete'}</span>
@@ -507,11 +493,11 @@ export const NoticeBoardModal: React.FC<Props> = ({
                   </div>
 
                   <h3 className={`text-sm sm:text-base font-bold leading-snug ${!isRead ? 'text-white font-extrabold' : 'text-slate-200'}`}>
-                    {lang === 'bn' ? notice.titleBn : notice.titleEn}
+                    {displayTitle}
                   </h3>
 
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">
-                    {lang === 'bn' ? notice.contentBn : notice.contentEn}
+                    {displayContent}
                   </p>
                 </div>
               );
@@ -534,3 +520,4 @@ export const NoticeBoardModal: React.FC<Props> = ({
     </div>
   );
 };
+

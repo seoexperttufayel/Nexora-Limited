@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Member, Installment, Language, PaymentAccountConfig } from '../types';
 import { translations } from '../data/translations';
 import { COMPANY_INFO } from '../data/initialData';
 import { INITIAL_PAYMENT_ACCOUNTS } from '../data/paymentAccounts';
 import { calculateInstallmentFine } from '../utils/fineCalculator';
+import { compressImage } from '../utils/imageCompressor';
 import { 
   Send, CreditCard, Building2, CheckCircle2, Clock, 
   Timer, Calendar, Lock, AlertCircle, ShieldCheck, 
-  FileText, ArrowRight, Wallet, Sparkles, Info, Smartphone
+  FileText, ArrowRight, Wallet, Sparkles, Info, Smartphone,
+  Upload, Image as ImageIcon, X, Eye, Check
 } from 'lucide-react';
 
 interface Props {
@@ -53,8 +55,45 @@ export const MemberDepositView: React.FC<Props> = ({
   const [method, setMethod] = useState(defaultMethod);
   const [trxId, setTrxId] = useState('');
   const [notes, setNotes] = useState('');
+  const [receiptUrl, setReceiptUrl] = useState<string>('');
+  const [receiptFileName, setReceiptFileName] = useState<string>('');
+  const [isCompressingSlip, setIsCompressingSlip] = useState(false);
+  const [previewSlipModalOpen, setPreviewSlipModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedReceipt, setSubmittedReceipt] = useState<Installment | null>(null);
+
+  // File upload handler with auto image compression
+  const handleSlipFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setReceiptFileName(file.name);
+    setIsCompressingSlip(true);
+    try {
+      const compressedDataUrl = await compressImage(file, 1200, 1200, 0.82);
+      setReceiptUrl(compressedDataUrl);
+    } catch (err) {
+      console.error('Slip compression error:', err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setReceiptUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressingSlip(false);
+    }
+  };
+
+  const handleRemoveSlip = () => {
+    setReceiptUrl('');
+    setReceiptFileName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // Update default method if activeAccounts changes
   useEffect(() => {
@@ -105,6 +144,8 @@ export const MemberDepositView: React.FC<Props> = ({
       lateFee: calculatedLateFee,
       method,
       trxId: finalTrx,
+      receiptUrl: receiptUrl || undefined,
+      receiptFileName: receiptFileName || undefined,
       date: todayStr, // Strictly real-time system date
       status: 'pending',
       notes: notes.trim(),
@@ -126,6 +167,8 @@ export const MemberDepositView: React.FC<Props> = ({
       lateFee: calculatedLateFee,
       method,
       trxId: finalTrx,
+      receiptUrl: receiptUrl || undefined,
+      receiptFileName: receiptFileName || undefined,
       date: todayStr,
       status: 'pending',
       notes: notes.trim(),
@@ -135,6 +178,9 @@ export const MemberDepositView: React.FC<Props> = ({
     setSubmittedReceipt(previewReceipt);
     setTrxId('');
     setNotes('');
+    setReceiptUrl('');
+    setReceiptFileName('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setIsSubmitting(false);
   };
 
@@ -158,19 +204,9 @@ export const MemberDepositView: React.FC<Props> = ({
           </p>
         </div>
 
-        {/* Real-time timestamp & share equity badge */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-slate-950 border border-slate-800 px-4 py-2.5 rounded-2xl text-right">
-            <span className="text-[10px] text-slate-400 block uppercase font-semibold flex items-center gap-1 justify-end">
-              <Timer className="w-3.5 h-3.5 text-emerald-400" />
-              {lang === 'bn' ? 'লাইভ সময়' : 'Live Clock'}
-            </span>
-            <span className="text-xs font-mono font-bold text-slate-200">
-              {currentTime}
-            </span>
-          </div>
-
-          <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-2xl text-right">
+        {/* Share equity badge */}
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-500/10 border border-emerald-500/20 px-5 py-3 rounded-2xl text-right">
             <span className="text-[10px] text-slate-400 block uppercase font-semibold">
               {lang === 'bn' ? 'আপনার শেয়ার অংশ' : 'Your Equity Share'}
             </span>
@@ -483,6 +519,97 @@ export const MemberDepositView: React.FC<Props> = ({
             </div>
           </div>
 
+          {/* PAYMENT SLIP / RECEIPT PHOTO UPLOAD (Optional) */}
+          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-emerald-400" />
+                <span>
+                  {lang === 'bn' ? 'পেমেন্ট স্লিপ বা ট্রানজেকশন স্ক্রিনশট (ঐচ্ছিক)' : 'Payment Slip / Receipt Photo (Optional)'}
+                </span>
+              </label>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                {lang === 'bn' ? 'যাচাইকরণের সুবিধা' : 'Faster Verification'}
+              </span>
+            </div>
+
+            {!receiptUrl ? (
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-800 hover:border-emerald-500/50 rounded-xl p-4 sm:p-5 text-center cursor-pointer transition bg-slate-900/40 hover:bg-slate-900/80 group"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleSlipFileChange}
+                  className="hidden"
+                />
+                <div className="flex flex-col items-center justify-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-200">
+                      {isCompressingSlip 
+                        ? (lang === 'bn' ? 'ছবি অপ্টিমাইজ করা হচ্ছে...' : 'Optimizing photo...') 
+                        : (lang === 'bn' ? 'ব্যাংক স্লিপ, ভাউচার বা বিকাশ/নগদ স্ক্রিনশট আপলোড করুন' : 'Click or Drag & Drop Bank Slip or Mobile Screenshot')}
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      {lang === 'bn' ? 'JPG, PNG, WebP (অটো কম্প্রেস ও নিরাপদ ক্লাউড সংরক্ষণ)' : 'JPG, PNG, WebP (Auto-optimized for instant loading)'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-900 border border-emerald-500/30">
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div 
+                    onClick={() => setPreviewSlipModalOpen(true)}
+                    className="w-14 h-14 rounded-lg overflow-hidden border border-slate-700 bg-slate-950 shrink-0 cursor-pointer relative group"
+                  >
+                    <img 
+                      src={receiptUrl} 
+                      alt="Slip preview" 
+                      className="w-full h-full object-cover group-hover:scale-105 transition"
+                    />
+                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                      <Eye className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold text-xs truncate">
+                      <Check className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{receiptFileName || 'payment_slip.jpg'}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {lang === 'bn' ? 'স্লিপ সফলভাবে সংযুক্ত হয়েছে' : 'Receipt attached & ready to submit'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewSlipModalOpen(true)}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold flex items-center space-x-1 transition border border-slate-700"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? 'দেখুন' : 'Preview'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemoveSlip}
+                    className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-semibold flex items-center space-x-1 transition border border-rose-500/20"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? 'মুছুন' : 'Remove'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Submit Button */}
           <div className="pt-2">
             <button
@@ -498,6 +625,50 @@ export const MemberDepositView: React.FC<Props> = ({
         </form>
 
       </div>
+
+      {/* Slip Preview Lightbox Modal */}
+      {previewSlipModalOpen && receiptUrl && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewSlipModalOpen(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2 text-white font-bold text-sm">
+                <ImageIcon className="w-4 h-4 text-emerald-400" />
+                <span>{receiptFileName || (lang === 'bn' ? 'সংযুক্ত পেমেন্ট স্লিপ' : 'Attached Payment Slip')}</span>
+              </div>
+              <button
+                onClick={() => setPreviewSlipModalOpen(false)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="max-h-[65vh] overflow-auto rounded-2xl bg-slate-950 flex items-center justify-center p-2 border border-slate-800/80">
+              <img 
+                src={receiptUrl} 
+                alt="Payment Slip Full Preview" 
+                className="max-h-[60vh] max-w-full object-contain rounded-lg"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+              <span>{lang === 'bn' ? 'ম্যানেজমেন্ট কমিটি যাচাইকরণের জন্য এই ছবিটি দেখতে পারবে' : 'Visible to management committee for quick verification'}</span>
+              <button
+                onClick={() => setPreviewSlipModalOpen(false)}
+                className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs hover:bg-emerald-400 transition"
+              >
+                {lang === 'bn' ? 'ঠিক আছে' : 'Done'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -5,13 +5,14 @@ import {
   doc, 
   setDoc, 
   updateDoc, 
+  deleteDoc,
   onSnapshot, 
   query, 
   orderBy,
   getDocs,
   writeBatch
 } from 'firebase/firestore';
-import { Installment, Member, Project } from '../types';
+import { Installment, Member, Project, LedgerTransaction, Notice } from '../types';
 import firebaseAppletConfig from '../../firebase-applet-config.json';
 
 // Firebase Configuration
@@ -38,10 +39,11 @@ const MEMBERS_COLLECTION = 'members';
 const PAYMENT_ACCOUNTS_COLLECTION = 'payment_accounts';
 const LEDGER_COLLECTION = 'ledger_transactions';
 const PROJECTS_COLLECTION = 'projects';
+const NOTICES_COLLECTION = 'notices';
+const SETTINGS_COLLECTION = 'settings';
 
 /**
  * Real-time subscription to installments collection in Firestore.
- * Automatically notifies callback whenever any installment is submitted, approved, or changed cross-device.
  */
 export const subscribeToInstallments = (
   onData: (installments: Installment[]) => void,
@@ -58,7 +60,7 @@ export const subscribeToInstallments = (
       });
       onData(items);
     }, (err) => {
-      console.warn('Firestore real-time subscription error:', err);
+      console.warn('Firestore real-time installments subscription error:', err);
       if (onError) onError(err);
     });
   } catch (err: any) {
@@ -69,10 +71,12 @@ export const subscribeToInstallments = (
 };
 
 /**
- * Seed initial installments if collection is currently empty
+ * Seed initial installments once if collection is uninitialized
  */
 export const seedInitialInstallmentsIfEmpty = async (defaultInstallments: Installment[]) => {
   try {
+    const seeded = localStorage.getItem('nxr_installments_seeded_v1');
+    if (seeded) return;
     const colRef = collection(db, INSTALLMENTS_COLLECTION);
     const snap = await getDocs(colRef);
     if (snap.empty && defaultInstallments.length > 0) {
@@ -82,7 +86,7 @@ export const seedInitialInstallmentsIfEmpty = async (defaultInstallments: Instal
         batch.set(docRef, { ...item, isDeleted: item.isDeleted || false });
       }
       await batch.commit();
-      console.log('Seeded initial installments to Firestore');
+      localStorage.setItem('nxr_installments_seeded_v1', 'true');
     }
   } catch (err) {
     console.warn('Could not seed initial installments:', err);
@@ -90,7 +94,7 @@ export const seedInitialInstallmentsIfEmpty = async (defaultInstallments: Instal
 };
 
 /**
- * Save / Create new Installment to Firestore (Real-Time cross-device broadcast)
+ * Save / Create new Installment to Firestore
  */
 export const saveInstallmentToCloud = async (installment: Installment): Promise<void> => {
   const docRef = doc(db, INSTALLMENTS_COLLECTION, installment.id);
@@ -150,10 +154,84 @@ export const updateInstallmentDeletionInCloud = async (
 export const deleteInstallmentInCloud = async (id: string): Promise<void> => {
   try {
     const docRef = doc(db, INSTALLMENTS_COLLECTION, id);
-    const { deleteDoc } = await import('firebase/firestore');
     await deleteDoc(docRef);
   } catch (err) {
     console.warn('Cloud delete installment error:', err);
+  }
+};
+
+/**
+ * Real-time subscription to Ledger Transactions in Firestore
+ */
+export const subscribeToLedgerTransactions = (
+  onData: (txns: LedgerTransaction[]) => void,
+  onError?: (error: Error) => void
+) => {
+  try {
+    const colRef = collection(db, LEDGER_COLLECTION);
+    const q = query(colRef, orderBy('date', 'desc'));
+
+    return onSnapshot(q, (snapshot) => {
+      const items: LedgerTransaction[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push(docSnap.data() as LedgerTransaction);
+      });
+      onData(items);
+    }, (err) => {
+      console.warn('Firestore ledger subscription error:', err);
+      if (onError) onError(err);
+    });
+  } catch (err: any) {
+    console.warn('Failed to start Firestore ledger subscription:', err);
+    if (onError) onError(err);
+    return () => {};
+  }
+};
+
+/**
+ * Seed initial ledger transactions once if empty
+ */
+export const seedInitialLedgerIfEmpty = async (defaults: LedgerTransaction[]) => {
+  try {
+    const seeded = localStorage.getItem('nxr_ledger_seeded_v1');
+    if (seeded) return;
+    const colRef = collection(db, LEDGER_COLLECTION);
+    const snap = await getDocs(colRef);
+    if (snap.empty && defaults.length > 0) {
+      const batch = writeBatch(db);
+      for (const item of defaults) {
+        const docRef = doc(db, LEDGER_COLLECTION, item.id);
+        batch.set(docRef, item);
+      }
+      await batch.commit();
+      localStorage.setItem('nxr_ledger_seeded_v1', 'true');
+    }
+  } catch (err) {
+    console.warn('Could not seed initial ledger:', err);
+  }
+};
+
+/**
+ * Save / Update Ledger Transaction in Firestore
+ */
+export const saveLedgerTransactionToCloud = async (txn: LedgerTransaction): Promise<void> => {
+  try {
+    const docRef = doc(db, LEDGER_COLLECTION, txn.id);
+    await setDoc(docRef, txn, { merge: true });
+  } catch (err) {
+    console.warn('Cloud save ledger transaction error:', err);
+  }
+};
+
+/**
+ * Permanently Delete Ledger Transaction in Firestore
+ */
+export const deleteLedgerTransactionInCloud = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, LEDGER_COLLECTION, id);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Cloud delete ledger transaction error:', err);
   }
 };
 
@@ -167,13 +245,11 @@ export const subscribeToPaymentAccounts = (
   try {
     const colRef = collection(db, PAYMENT_ACCOUNTS_COLLECTION);
     return onSnapshot(colRef, (snapshot) => {
-      if (!snapshot.empty) {
-        const items: any[] = [];
-        snapshot.forEach((docSnap) => {
-          items.push(docSnap.data());
-        });
-        onData(items);
-      }
+      const items: any[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push(docSnap.data());
+      });
+      onData(items);
     }, (err) => {
       console.warn('Firestore payment accounts subscription error:', err);
       if (onError) onError(err);
@@ -185,10 +261,12 @@ export const subscribeToPaymentAccounts = (
 };
 
 /**
- * Seed initial payment accounts if empty in Firestore
+ * Seed initial payment accounts once if empty
  */
 export const seedInitialPaymentAccountsIfEmpty = async (defaults: any[]) => {
   try {
+    const seeded = localStorage.getItem('nxr_payment_accounts_seeded_v1');
+    if (seeded) return;
     const colRef = collection(db, PAYMENT_ACCOUNTS_COLLECTION);
     const snap = await getDocs(colRef);
     if (snap.empty && defaults.length > 0) {
@@ -198,7 +276,7 @@ export const seedInitialPaymentAccountsIfEmpty = async (defaults: any[]) => {
         batch.set(docRef, item);
       }
       await batch.commit();
-      console.log('Seeded initial payment accounts to Firestore');
+      localStorage.setItem('nxr_payment_accounts_seeded_v1', 'true');
     }
   } catch (err) {
     console.warn('Could not seed initial payment accounts:', err);
@@ -218,12 +296,11 @@ export const savePaymentAccountToCloud = async (account: any): Promise<void> => 
 };
 
 /**
- * Delete Payment Account in Firestore
+ * Permanently Delete Payment Account in Firestore
  */
 export const deletePaymentAccountInCloud = async (id: string): Promise<void> => {
   try {
     const docRef = doc(db, PAYMENT_ACCOUNTS_COLLECTION, id);
-    const { deleteDoc } = await import('firebase/firestore');
     await deleteDoc(docRef);
   } catch (err) {
     console.warn('Cloud delete payment account error:', err);
@@ -268,19 +345,16 @@ export const saveProjectToCloud = async (project: Project): Promise<void> => {
 };
 
 /**
- * Delete Project in Firestore
+ * Permanently Delete Project in Firestore
  */
 export const deleteProjectInCloud = async (id: string): Promise<void> => {
   try {
     const docRef = doc(db, PROJECTS_COLLECTION, id);
-    const { deleteDoc } = await import('firebase/firestore');
     await deleteDoc(docRef);
   } catch (err) {
     console.warn('Cloud delete project error:', err);
   }
 };
-
-const SETTINGS_COLLECTION = 'settings';
 
 /**
  * Real-time subscription to admin profile settings in Firestore
@@ -316,5 +390,56 @@ export const saveAdminProfileInCloud = async (profile: any): Promise<void> => {
     console.warn('Cloud save admin profile error:', err);
   }
 };
+
+/**
+ * Real-time subscription to notices collection in Firestore
+ */
+export const subscribeToNotices = (
+  onData: (notices: Notice[]) => void,
+  onError?: (error: Error) => void
+) => {
+  try {
+    const colRef = collection(db, NOTICES_COLLECTION);
+    const q = query(colRef, orderBy('date', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+      const items: Notice[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push(docSnap.data() as Notice);
+      });
+      onData(items);
+    }, (err) => {
+      console.warn('Firestore notices subscription error:', err);
+      if (onError) onError(err);
+    });
+  } catch (err: any) {
+    if (onError) onError(err);
+    return () => {};
+  }
+};
+
+/**
+ * Save / Publish Notice in Firestore
+ */
+export const saveNoticeToCloud = async (notice: Notice): Promise<void> => {
+  try {
+    const docRef = doc(db, NOTICES_COLLECTION, notice.id);
+    await setDoc(docRef, notice, { merge: true });
+  } catch (err) {
+    console.warn('Cloud save notice error:', err);
+  }
+};
+
+/**
+ * Permanently Delete Notice from Firestore
+ */
+export const deleteNoticeInCloud = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, NOTICES_COLLECTION, id);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Cloud delete notice error:', err);
+  }
+};
+
 
 

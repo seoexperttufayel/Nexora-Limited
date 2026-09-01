@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { Installment, Language, Member } from '../types';
 import { COMPANY_INFO } from '../data/initialData';
+import { NexoraLogo } from './NexoraLogo';
+import { numberToWordsBn, numberToWordsEn } from '../utils/numberToWords';
 import { X, Printer, ShieldCheck, CheckCircle2, Download, Building2 } from 'lucide-react';
 
 interface Props {
@@ -8,22 +10,6 @@ interface Props {
   member?: Member;
   lang: Language;
   onClose: () => void;
-}
-
-// Convert amount number to English/Bengali words
-function numberToWords(num: number, lang: Language): string {
-  if (lang === 'bn') {
-    if (num === 10000) return 'দশ হাজার টাকা মাত্র';
-    if (num === 3000) return 'তিন হাজার টাকা মাত্র';
-    if (num === 2000) return 'দুই হাজার টাকা মাত্র';
-    if (num === 1000) return 'এক হাজার টাকা মাত্র';
-    return `${num.toLocaleString('bn-BD')} টাকা মাত্র`;
-  }
-  if (num === 10000) return 'Ten Thousand Taka Only';
-  if (num === 3000) return 'Three Thousand Taka Only';
-  if (num === 2000) return 'Two Thousand Taka Only';
-  if (num === 1000) return 'One Thousand Taka Only';
-  return `${num.toLocaleString()} BDT Only`;
 }
 
 export const MoneyReceiptModal: React.FC<Props> = ({ installment, member, lang, onClose }) => {
@@ -89,15 +75,13 @@ export const MoneyReceiptModal: React.FC<Props> = ({ installment, member, lang, 
           {/* Receipt Top Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 sm:pb-6 border-b border-slate-800 print:border-slate-900">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-xl sm:text-2xl shadow-lg print:bg-black print:text-white shrink-0">
-                N
-              </div>
+              <NexoraLogo size="md" variant="badge" />
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-white print:text-black">NEXORA LIMITED</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-white print:text-black tracking-wide">NEXORA LIMITED</h2>
                 <p className="text-[11px] sm:text-xs text-emerald-400 print:text-slate-700 font-medium">
                   {lang === 'bn' ? 'নেক্সোরা লিমিটেড (শরিয়াহ ভিত্তিক যৌথ বিনিয়োগ)' : 'Shariah-Compliant Property & Business Investments'}
                 </p>
-                <p className="text-[10px] sm:text-[11px] text-slate-400 print:text-slate-600">
+                <p className="text-[10px] sm:text-[11px] text-slate-400 print:text-slate-600 font-mono">
                   RJSC Reg: {COMPANY_INFO.regNo} | TIN: {COMPANY_INFO.tin}
                 </p>
               </div>
@@ -113,7 +97,7 @@ export const MoneyReceiptModal: React.FC<Props> = ({ installment, member, lang, 
                 </p>
               </div>
               <p className="text-[11px] sm:text-xs text-slate-400 print:text-slate-600 mt-1">
-                {lang === 'bn' ? 'ইস্যুর তারিখ:' : 'Issue Date:'} <span className="font-semibold text-slate-200 print:text-black">{installment.date}</span>
+                {lang === 'bn' ? 'ইস্যুর তারিখ:' : 'Issue Date:'} <span className="font-semibold text-slate-200 print:text-black font-mono">{installment.date}</span>
               </p>
             </div>
           </div>
@@ -166,7 +150,7 @@ export const MoneyReceiptModal: React.FC<Props> = ({ installment, member, lang, 
               <div>
                 <span className="text-[10px] sm:text-xs text-slate-400 print:text-slate-600 block">{lang === 'bn' ? 'মোট জমাকৃত অর্থের পরিমাণ' : 'Total Amount Received'}</span>
                 <p className="text-xs text-slate-300 print:text-slate-700 font-medium italic mt-0.5">
-                  {lang === 'bn' ? 'কথায়: ' : 'In words: '} {numberToWords(installment.amount, lang)}
+                  {lang === 'bn' ? 'কথায়: ' : 'In words: '} {lang === 'bn' ? numberToWordsBn(installment.amount) : numberToWordsEn(installment.amount)}
                 </p>
               </div>
               <div className="text-left sm:text-right">

@@ -228,38 +228,7 @@ export const INITIAL_INSTALLMENTS: Installment[] = [];
 
 export const PROJECTS: Project[] = [];
 
-export const NOTICES: Notice[] = [
-  {
-    id: 'NTC-001',
-    titleEn: 'Annual General Meeting (AGM) Q3 2026 Schedule',
-    titleBn: 'বার্ষিক সাধারণ সভা (AGM) তৃতীয় কোয়ার্টার ২০২৬ সময়সূচী',
-    date: '2026-08-25',
-    category: 'agm',
-    important: true,
-    contentEn: 'The 3rd Quarterly General Meeting of Nexora Limited will be held on September 15, 2026, at 4:00 PM in the Head Office Boardroom and online via Zoom. All 13 founder members are requested to attend.',
-    contentBn: 'নেক্সোরা লিমিটেডের ৩য় ত্রৈমাসিক সাধারণ সভা আগামী ১৫ সেপ্টেম্বর ২০২৬, বিকাল ৪:০০ টায় প্রধান কার্যালয় বোর্ডরুম এবং অনলাইনে জুমের মাধ্যমে অনুষ্ঠিত হবে। সকল ১৩ জন প্রতিষ্ঠাতা সদস্যকে যথাসময়ে উপস্থিত থাকার অনুরোধ করা হচ্ছে।'
-  },
-  {
-    id: 'NTC-002',
-    titleEn: 'September 2026 Monthly Installment Submission Notice',
-    titleBn: 'সেপ্টেম্বর ২০২৬ মাসিক কিস্তি জমা প্রদানের বিজ্ঞপ্তি',
-    date: '2026-08-20',
-    category: 'installment',
-    important: false,
-    contentEn: 'Shareholders are requested to clear their monthly installments for September by the 10th of September through official bKash, Nagad, or Islami Bank channels to maintain timely project allocations.',
-    contentBn: 'প্রকল্পের সঠিক বাস্তবায়ন নিশ্চিত করতে সকল সম্মানিত শেয়ারহোল্ডারদের আগামী ১০ই সেপ্টেম্বরের মধ্যে নিজ নিজ মাসিক কিস্তি অফিসিয়াল বিকাশ, নগদ বা ইসলামী ব্যাংক অ্যাকাউন্টে জমা দেওয়ার জন্য অনুরোধ করা হলো।'
-  },
-  {
-    id: 'NTC-003',
-    titleEn: 'Shariah Board Compliance Audit Clearance 2026',
-    titleBn: 'শরিয়াহ বোর্ড কমপ্লায়েন্স অডিট অনুমোদন ২০২৬',
-    date: '2026-08-10',
-    category: 'general',
-    important: false,
-    contentEn: 'The Shariah Supervisory Committee of Nexora Limited has successfully concluded the mid-year audit and declared all business models and financial accounts 100% Riba-free.',
-    contentBn: 'নেক্সোরা লিমিটেডের শরিয়াহ সুপারভাইজারি কমিটি অর্ধবার্ষিক অডিট সফলভাবে সম্পন্ন করেছে এবং সকল ব্যবসায়িক মডেল ও আর্থিক হিসাব ১০০% সুদ ও অনিয়মমুক্ত হিসেবে সার্টিফাই করেছে।'
-  }
-];
+export const NOTICES: Notice[] = [];
 
 export const COMPANY_POSTS = [
   {
